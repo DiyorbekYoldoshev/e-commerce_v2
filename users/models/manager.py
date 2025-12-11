@@ -1,6 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
-from django.core.exceptions import ValidationError
 from .queryset import UserQuerySet
+from django.core.exceptions import ValidationError
 
 class UserManager(BaseUserManager):
 
@@ -19,34 +19,31 @@ class UserManager(BaseUserManager):
     def search(self, text):
         return self.all_with_delete().search(text)
 
-    def _create_user(self, email, password, **extra_fields):
+    def _create_user(self,email,password,**extra_fields):
 
         if not email:
-            raise ValidationError("Email bo'sh bo'lmasligi kerak")
-
+            raise ValidationError("Email bo'lshi kerak")
         email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
+        user = self.model(email=email,**extra_fields)
         user.set_password(password)
         user.save(using=self._db)
 
         return user
 
-    def create_user(self, email, password=None, **extra_fields):
-
-        extra_fields.setdefault('is_staff', False)
-        extra_fields.setdefault('is_superuser', False)
-
-        return self._create_user(email,password,**extra_fields)
-
-    def create_superuser(self, email, password, **extra_fields):
-
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
-
-        if extra_fields.get('is_staff') is not True:
-            raise ValidationError("Superuser uchun is_staff=True bo'lishi kerak")
-        if extra_fields.get('is_superuser') is not True:
-            raise ValidationError("Superuser uchun is_superuser=True bo'lishi kerak")
+    def create_user(self,email,password,**extra_fields):
+        extra_fields.setdefault("is_active",True)
+        extra_fields.setdefault("is_staff",False)
+        extra_fields.setdefault("is_superuser", False)
 
         return self._create_user(email,password,**extra_fields)
+
+    def create_superuser(self,email,password,**extra_fields):
+        extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValidationError("Siz admin bo'la olmaysiz")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValidationError("Siz admin bo'la olmaysiz")
+
