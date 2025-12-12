@@ -7,7 +7,7 @@ class UserManager(BaseUserManager):
     def get_queryset(self):
         return UserQuerySet(self.model, using=self._db).filter(is_deleted=False)
 
-    def all_with_delete(self):
+    def all_with_deleted(self):
         return UserQuerySet(self.model, using=self._db)
 
     def active(self):
@@ -17,7 +17,7 @@ class UserManager(BaseUserManager):
         return self.get_queryset().deleted()
 
     def search(self, text):
-        return self.all_with_delete().search(text)
+        return self.all_with_deleted().search(text)
 
     def _create_user(self,email,password,**extra_fields):
 
