@@ -1,4 +1,7 @@
 # 1 - imports
+import os.path
+import uuid
+
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -6,6 +9,12 @@ from django.utils.text import slugify
 
 from .manager import UserManager
 from .abstract import BaseModel
+
+def avatar_upload_to(instance,filename):
+    ext = filename.split(".")[-1]
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    return os.path.join('avatars', str(instance.user.id if hasattr(instance, 'user') else 'anonymous'),filename)
+
 
 # 2 - choices
 class GenderChoices(models.TextChoices):
