@@ -9,7 +9,6 @@ from .user import avatar_upload_to
 phone_regex = RegexValidator(
     regex=r'^\+998\d{9}$',
     message="Telefon raqamingizni shu tartibda kiriting: +998901234567"
-
 )
 
 # 3 - main class
