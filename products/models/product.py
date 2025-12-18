@@ -48,7 +48,7 @@ class Product(BaseModel):
     # 6 - clean
     def clean(self):
 
-        if self.name and len(self.name) > 3:
+        if self.name and len(self.name) < 3:
             raise ValidationError("Mahsulot nomi juda qisqa")
 
         if self.base_stock < 0:
@@ -57,9 +57,6 @@ class Product(BaseModel):
         if self.base_price < 0:
             raise ValidationError("Musbat qiymatda kiriting")
 
-        valid_statuses = [choice[0] for choice in self.status]
-        if self.status not in valid_statuses:
-            raise ValidationError("Status noto'g'ri")
 
         if self.expiration_date:
             today = timezone.now().today()
@@ -74,10 +71,9 @@ class Product(BaseModel):
 
     # 7 - is_expired
     def is_expired(self):
-
         if not self.expiration_date:
-            raise False
-        raise self.expiration_date < timezone.now().today()
+            return False
+        return self.expiration_date < timezone.now()
 
 
     # 8 - save
@@ -88,7 +84,7 @@ class Product(BaseModel):
             slug = base
             i = 1
             while Product.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f"{base}-{1}"
+                slug = f"{base}-{i}"
                 i += 1
             self.slug = slug
         super().save(*args, **kwargs)
@@ -120,7 +116,7 @@ class Product(BaseModel):
 class ProductVariant(BaseModel):
 
     # fields product,sku,price,stock
-    product = models.ForeignKey(Product,on_delete=models.CASCADE,related_name='products')
+    product = models.ForeignKey(Product,on_delete=models.CASCADE,related_name='variants')
     sku = models.CharField(max_length=200)
     price = models.DecimalField(max_digits=10,decimal_places=2)
     stock = models.PositiveIntegerField(default=0)
@@ -134,14 +130,14 @@ class ProductVariant(BaseModel):
 class VariantAttributeValue(BaseModel):
 
     # variant,attribute,value
-    variant = models.ForeignKey(ProductVariant,on_delete=models.CASCADE, related_name='products')
+    variant = models.ForeignKey(ProductVariant,on_delete=models.CASCADE, related_name='attributes')
     attribute = models.ForeignKey(Attribute, on_delete=models.CASCADE)
     value = models.CharField(max_length=100)
 
     # class meta
     class Meta:
 
-        unique_together = ('variant','attributes')
+        unique_together = ('variant','attribute')
 
     # str
     def __str__(self):
