@@ -61,6 +61,15 @@ class Category(BaseModel):
         verbose_name_plural = "Kategoriyalar"
         ordering = ['name']
 
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                        models.Q(type="main", parent__isnull=True) |
+                        models.Q(type="sub", parent__isnull=False)
+                ),
+                name="category_type_parent_rule"
+            )
+        ]
         indexes = [
             models.Index(fields=['name']),
             models.Index(fields=['slug'])
@@ -94,8 +103,8 @@ class Category(BaseModel):
 
     # 11 - full_path
     def full_path(self):
-        if not self.parent:
-            return f"{self.parent} -> {self.name}"
+        if self.parent:
+            return f"{self.parent.full_path()} -> {self.name}"
         return self.name
 
     # 12 - str_method
