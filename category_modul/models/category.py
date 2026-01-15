@@ -21,7 +21,7 @@ class Category(BaseModel):
     # 4 - fields
     name = models.CharField(max_length=200, null=False, blank=False)
     type = models.CharField(max_length=13,choices=TYPE_CHOICES,default=TYPE_MAIN)
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(unique=True,null=True,blank=True)
     is_active = models.BooleanField(default=True)
 
 
@@ -45,7 +45,7 @@ class Category(BaseModel):
             raise ValidationError("Kategoriya nomi 2 so'zdan kam bo'lmasligi kerak")
 
         if self.parent and self.parent == self:
-            raise ValidationError("Kategoriya o'zi o'ziga parent bo'la olmaydi")
+            raise ValidationError("Kategoriya orders'zi orders'ziga parent bo'la olmaydi")
 
         if self.type == self.TYPE_MAIN and self.parent is not None:
             raise ValidationError("Asosiy kateroriya parent bo'la olmaydi")
@@ -61,15 +61,15 @@ class Category(BaseModel):
         verbose_name_plural = "Kategoriyalar"
         ordering = ['name']
 
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                        models.Q(type="main", parent__isnull=True) |
-                        models.Q(type="sub", parent__isnull=False)
-                ),
-                name="category_type_parent_rule"
-            )
-        ]
+        # constraints = [
+        #     models.CheckConstraint(
+        #         condition=(
+        #                 models.Q(type="main", parent__isnull=True) |
+        #                 models.Q(type="sub", parent__isnull=False)
+        #         ),
+        #         name="category_type_parent_rule"
+        #     )
+        # ]
         indexes = [
             models.Index(fields=['name']),
             models.Index(fields=['slug'])
