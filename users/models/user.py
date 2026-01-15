@@ -26,7 +26,7 @@ class GenderChoices(models.TextChoices):
 class User(PermissionsMixin,AbstractBaseUser,BaseModel):
 
     # 4 - fields
-    email = models.EmailField()
+    email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=120, null=True, blank=True)
     last_name = models.CharField(max_length=120, null=True, blank=True)
     slug = models.SlugField(unique=True,null=True, blank=True)
@@ -84,24 +84,25 @@ class User(PermissionsMixin,AbstractBaseUser,BaseModel):
     class Meta:
         verbose_name = "Foydalanuvchi"
         verbose_name_plural = "Foydalanuvchilar"
-
         ordering = ['-created_at']
 
         indexes = [
             models.Index(fields=['email']),
-            models.Index(fields=['first_name','last_name']),
-            models.Index(fields=['slug'])
+            models.Index(fields=['first_name', 'last_name']),
+            models.Index(fields=['slug']),
         ]
 
-        constraints = models.UniqueConstraint(
-            fields='email',
-            name='unique_user_email'
-        )
+        constraints = [
+            models.UniqueConstraint(
+                fields=['email'],
+                name='unique_user_email'
+            )
+        ]
+
         permissions = [
             ('can_view_sensitive_data', "Maxfiy foydalanuvchilarni ko'rish"),
-            ('can_change_user_status', "Foydalanuvchi statusini o'zgartirish")
+            ('can_change_user_status', "Foydalanuvchi statusini o'zgartirish"),
         ]
-
 
     # 12 - core
     @property
