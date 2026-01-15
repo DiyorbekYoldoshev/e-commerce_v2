@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.utils.text import slugify
 from django.utils import timezone
-from categories.models import Category, Attribute
+from category_modul.models import Category, Attribute
 from .manager import ActiveManagerProduct
 from .abstract import BaseModel
 
@@ -47,7 +47,6 @@ class Product(BaseModel):
 
     # 6 - clean
     def clean(self):
-
         if self.name and len(self.name) < 3:
             raise ValidationError("Mahsulot nomi juda qisqa")
 
@@ -57,16 +56,15 @@ class Product(BaseModel):
         if self.base_price < 0:
             raise ValidationError("Musbat qiymatda kiriting")
 
-
         if self.expiration_date:
-            today = timezone.now().today()
-            if self.expiration_date < today:
+            # timezone-aware "today"
+            now = timezone.now()
+            if self.expiration_date < now:
                 raise ValidationError(
                     {
-                        'expiration_date':"Yaroqlilik muddati o'tib ketgan sanani kiritib bo'lmaydi"
+                        'expiration_date': "Yaroqlilik muddati o'tib ketgan sanani kiritib bo'lmaydi"
                     }
                 )
-
 
 
     # 7 - is_expired
@@ -112,7 +110,7 @@ class Product(BaseModel):
         return self.name
 
 
-# 1.1 - sub class ProductVariant
+# 1.1 - subclass ProductVariant
 class ProductVariant(BaseModel):
 
     # fields product,sku,price,stock
