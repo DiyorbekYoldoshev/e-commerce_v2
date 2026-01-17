@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator,MinLengthValidator,MaxLengthValidator
 from django.utils.text import slugify
 from django.utils import timezone
 from category_modul.models import Category, Attribute
