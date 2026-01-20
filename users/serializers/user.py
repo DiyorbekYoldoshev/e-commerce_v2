@@ -20,8 +20,8 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'slug',
             'gender',
-            'is_seller'
-            'profile'
+            'is_seller',
+            'profile',
         )
 
         read_only_fields = (

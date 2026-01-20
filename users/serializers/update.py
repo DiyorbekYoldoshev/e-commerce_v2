@@ -23,7 +23,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
 
         profile = instance.profile
-        for attr, value in profile.items():
+        for attr, value in profile_data.items():
             setattr(profile,attr,value)
         profile.save()
         return instance
