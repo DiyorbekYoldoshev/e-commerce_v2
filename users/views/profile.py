@@ -1,9 +1,22 @@
-from rest_framework import viewsets
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from ..serializers import ProfileSerializer,UserSerializer
+from users.models.profile import Profile
+from users.serializers import UserSerializer
+from users.serializers.profile import ProfileSerializer
 
-
-class ProfileViewSet(viewsets.ModelViewSet):
-
-
+class ProfileView(RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return Profile.objects.get(user=self.request.user)
+
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
