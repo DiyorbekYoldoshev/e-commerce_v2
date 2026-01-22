@@ -92,12 +92,7 @@ class User(PermissionsMixin,AbstractBaseUser,BaseModel):
             models.Index(fields=['slug']),
         ]
 
-        constraints = [
-            models.UniqueConstraint(
-                fields=['email'],
-                name='unique_user_email'
-            )
-        ]
+
 
         permissions = [
             ('can_view_sensitive_data', "Maxfiy foydalanuvchilarni ko'rish"),

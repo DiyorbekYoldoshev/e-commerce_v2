@@ -17,7 +17,7 @@ class Profile(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='profile')
     phone = models.CharField(max_length=13, validators=[phone_regex],null=True,blank=True)
     bio = models.TextField(null=True,blank=True)
-    avatar = models.ImageField(upload_to=avatar_upload_to)
+    avatar = models.ImageField(upload_to=avatar_upload_to, null=True, blank=True)
 
     # 5 - str
     def __str__(self):
