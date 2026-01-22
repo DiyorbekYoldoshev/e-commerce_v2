@@ -5,4 +5,5 @@ from ..models.user import User
 class UserViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
-    serializer_class =
+    serializer_class = UserSerializer
+    permission_classes = []

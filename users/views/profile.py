@@ -12,7 +12,8 @@ class ProfileView(RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        return Profile.objects.get(user=self.request.user)
+        obj, _ = Profile.objects.get_or_create(user=self.request.user)
+        return obj
 
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
