@@ -15,3 +15,4 @@ class PasswordChangeSerializer(serializers.ModelSerializer):
                 }
             )
         return attrs
+
