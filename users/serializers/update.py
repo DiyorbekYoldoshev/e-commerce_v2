@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from ..models import Profile
 from ..models.user import User
 
 class UserUpdateSerializer(serializers.ModelSerializer):
@@ -22,8 +23,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
         instance = super().update(instance, validated_data)
 
-        profile = instance.profile
+        profile, _ = Profile.objects.get_or_create(user=instance)
         for attr, value in profile_data.items():
-            setattr(profile,attr,value)
-        profile.save()
+            setattr(profile, attr, value)
+        profile.save(update_fields=list(profile_data.keys()) if profile_data else None)
+
         return instance

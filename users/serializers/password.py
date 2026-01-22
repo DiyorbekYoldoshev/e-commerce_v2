@@ -1,3 +1,4 @@
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 class PasswordChangeSerializer(serializers.ModelSerializer):
@@ -14,5 +15,6 @@ class PasswordChangeSerializer(serializers.ModelSerializer):
                     'new_password':"Parollar mos emas"
                 }
             )
+        validate_password(attrs['new_password'])
         return attrs
 
