@@ -1,9 +1,9 @@
 # core/permissions/__init__.py
 from .base import IsAuthenticatedAndActive, ReadOnly
-from .users import IsUserOwner
+from .users import IsUserOwner,IsAdmin
 from .sellers import IsSeller, IsSellerOwner
 from .products import IsProductOwnerOrReadOnly
-from .orders import IsOrderOwner, CanManageOrderStatus
+from .orders import IsOrderOwner
 
 __all__ = [
     'IsAuthenticatedAndActive',
@@ -13,5 +13,5 @@ __all__ = [
     'IsSellerOwner',
     'IsProductOwnerOrReadOnly',
     'IsOrderOwner',
-    'CanManageOrderStatus',
+    'IsAdmin'
 ]
