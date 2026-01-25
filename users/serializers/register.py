@@ -31,3 +31,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(password=password,**validated_data)
         Profile.objects.get_or_create(user=user)
         return user
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
