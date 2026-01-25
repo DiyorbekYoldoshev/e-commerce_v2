@@ -8,29 +8,6 @@ from users.serializers import UserRegisterSerializer, UserSerializer
 from users.services.auth import register_user
 
 
-class LoginView(APIView):
-
-    permission_classes = []
-
-    def post(self,request):
-
-        email = request.data.get('email')
-        password = request.data.get('password')
-
-        user = authenticate(email=email,password=password)
-
-        if not user:
-            return Response(
-                {
-                    'error':"Email yoki parol noto'g'ri"
-                },status=status.HTTP_401_UNAUTHORIZED
-            )
-        return Response(
-            {
-                'message':"Muvaffaqiyatli login",
-                'user_id':user.id,
-            },status=status.HTTP_200_OK
-        )
 
 class RegisterView(APIView):
     permission_classes = []
@@ -43,4 +20,4 @@ class RegisterView(APIView):
         data.pop("password_confirm")
 
         user = register_user(**data)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(UserSerializer(user,context={'request':request}).data, status=status.HTTP_201_CREATED)
