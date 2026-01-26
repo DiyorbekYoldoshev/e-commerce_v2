@@ -1,7 +1,9 @@
+from drf_yasg import openapi
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_yasg.utils import swagger_auto_schema
 
 from users.serializers import LoginSerializer,UserSerializer
 from users.services.auth import authenticate_user
@@ -11,6 +13,10 @@ class LoginView(APIView):
 
     permission_classes = []
 
+    @swagger_auto_schema(
+        request_body=LoginSerializer,
+        responses={200:openapi.Response('OK')}
+    )
     def post(self,request):
 
         serializer = LoginSerializer(data=request.data)
