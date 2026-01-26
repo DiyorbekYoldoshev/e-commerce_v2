@@ -1,3 +1,4 @@
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -12,6 +13,9 @@ from users.services.auth import register_user
 class RegisterView(APIView):
     permission_classes = []
 
+    @swagger_auto_schema(
+        request_body=UserRegisterSerializer
+    )
     def post(self, request):
         serializer = UserRegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
