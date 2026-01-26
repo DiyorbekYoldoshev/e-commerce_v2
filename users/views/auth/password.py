@@ -1,3 +1,4 @@
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +10,7 @@ class ChangePasswordView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(request_body=PasswordChangeSerializer)
     def post(self, request):
 
         serializer = PasswordChangeSerializer(data=request.data)

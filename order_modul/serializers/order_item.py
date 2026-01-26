@@ -15,10 +15,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'product',
             'product_name',
             'quantity',
-            'price',
-            'subtotal'
+            'amount',
         )
-        read_only_fields = ('price','subtotal')
+        read_only_fields = ('amount',)
 
 class OrderItemCreateSerializer(serializers.ModelSerializer):
 

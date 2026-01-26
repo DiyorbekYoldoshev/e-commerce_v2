@@ -14,7 +14,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             'id',
-            'status',
+            'status_choices',
             'payment_status',
             'total_amount',
             'items_count',
@@ -30,7 +30,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             'id',
-            'status',
+            'status_choices',
             'payment_status',
             'address',
             'phone',
