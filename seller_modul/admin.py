@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 from .models import Seller, SellerRequest
-from .services.seller_service import approve_seller_request
+from .services import approve_request
 
 
 @admin.register(SellerRequest)
@@ -13,7 +13,7 @@ class SellerRequestAdmin(admin.ModelAdmin):
 
     def approve_requests(self, request, queryset):
         for req in queryset.filter(status='pending'):
-            approve_seller_request(req)
+            approve_request(req)
 
     approve_requests.short_description = "Tanlangan arizalarni TASDIQLASH"
 
