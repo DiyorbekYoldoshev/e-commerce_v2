@@ -24,3 +24,13 @@ def approve_request(request_obj: SellerRequest) -> Seller:
     request_obj.save(update_fields=['status', 'reviewed_at'])
 
     return seller
+
+@transaction.atomic
+def reject_request(request_obj:SellerRequest,reason=None):
+
+    if request_obj.status != SellerRequest.STATUS_PENDING:
+        raise ValidationError("Bu ariza oldin ko'rib chiqilgan")
+
+    request_obj.status = SellerRequest.STATUS_REJECTED
+    request_obj.reviewed_at = timezone.now()
+    request_obj.save(update_fields=['status','reviewed_at'])
