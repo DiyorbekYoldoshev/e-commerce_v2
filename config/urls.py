@@ -23,11 +23,12 @@ public_api_patterns = [
 # Admin API
 admin_api_patterns = [
     path("api/v1/admin/", include("core.urls.admin_urls")),
+    path("api/v1/admin/", include("seller_modul.urls.urls_core")),
 ]
 
 # Seller API
 seller_api_patterns = [
-    # path("api/v1/sellers/", include("seller_modul.urls")),
+    path("api/v1/sellers/", include("seller_modul.urls")),
     # path("api/v1/seller/", include("seller_modul.urls")),
 ]
 
@@ -82,6 +83,7 @@ urlpatterns = [
     path("docs/", schema_public.with_ui("swagger", cache_timeout=0), name="docs-public"),
     path("docs/admin/", schema_admin.with_ui("swagger", cache_timeout=0), name="docs-admin"),
     path("docs/seller/", schema_seller.with_ui("swagger", cache_timeout=0), name="docs-seller"),
+    path("docs/seller/admin/", schema_seller.with_ui("swagger", cache_timeout=0), name="docs-seller"),
 
     path("docs/schema.json", schema_public.without_ui(cache_timeout=0), name="schema-json-public"),
 
