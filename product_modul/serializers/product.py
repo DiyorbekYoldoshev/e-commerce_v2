@@ -62,7 +62,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         if user.is_anonymous:
             return False
-        return obj.wishlisted_by.filter(user=user).filter
+        return obj.wishlisted_by.filter(user=user)
 
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):

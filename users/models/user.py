@@ -6,6 +6,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
+from simple_history.models import HistoricalRecords
 
 from .manager import UserManager
 from .abstract import BaseModel
@@ -41,7 +42,7 @@ class User(PermissionsMixin,AbstractBaseUser,BaseModel):
     is_active = models.BooleanField(default=True)
 
     is_deleted = models.BooleanField(default=False)
-
+    history = HistoricalRecords()
     # 5 - manager
     objects = UserManager()
 
