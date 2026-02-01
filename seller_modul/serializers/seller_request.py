@@ -1,13 +1,12 @@
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework.serializers import (
-    ModelSerializer,Serializer,SerializerMethodField,ListSerializer)
-
+from rest_framework.serializers import ModelSerializer
 
 from ..models.seller import SellerRequest
+from ..services import seller_approval
+
 
 class SellerRequestCreateSerializer(ModelSerializer):
-
 
     class Meta:
         model = SellerRequest
@@ -18,14 +17,12 @@ class SellerRequestCreateSerializer(ModelSerializer):
             'address',
         )
 
-
     def validate(self, attrs):
-
         user = self.context['request'].user
 
         if SellerRequest.objects.filter(
             user=user,
-            status='pending'
+            status=SellerRequest.STATUS_PENDING
         ).exists():
             raise serializers.ValidationError(
                 "Sizda ko'rib chqilyotgan ariza mavjud"
@@ -33,17 +30,17 @@ class SellerRequestCreateSerializer(ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-
         user = self.context['request'].user
         return SellerRequest.objects.create(
             user=user,
-            status='pending',
+            status=SellerRequest.STATUS_PENDING,
             **validated_data
         )
 
-class SellerRequestListSerializer(ListSerializer):
 
-    user_email = serializers.CharField(source='user.email',read_only=True)
+class SellerRequestListSerializer(ModelSerializer):
+    user_email = serializers.CharField(source='user.email', read_only=True)
+
     class Meta:
         model = SellerRequest
         fields = (
@@ -55,8 +52,8 @@ class SellerRequestListSerializer(ListSerializer):
             'created_at'
         )
 
-class SellerRequestDetailSerializer(ModelSerializer):
 
+class SellerRequestDetailSerializer(ModelSerializer):
     user = serializers.StringRelatedField()
 
     class Meta:
@@ -72,12 +69,8 @@ class SellerRequestDetailSerializer(ModelSerializer):
             'created_at'
         )
 
-from rest_framework import serializers
-from ..models import SellerRequest
-
 
 class SellerRequestAdminActionSerializer(serializers.Serializer):
-
 
     ACTION_APPROVE = "approve"
     ACTION_REJECT = "reject"
@@ -88,7 +81,7 @@ class SellerRequestAdminActionSerializer(serializers.Serializer):
     def validate(self, attrs):
         req: SellerRequest = self.context["seller_request"]
 
-        if req.status != "pending":
+        if req.status != SellerRequest.STATUS_PENDING:
             raise serializers.ValidationError("Bu ariza allaqachon ko‘rib chiqilgan.")
 
         if attrs["action"] == self.ACTION_REJECT and not attrs.get("reason"):
@@ -99,27 +92,15 @@ class SellerRequestAdminActionSerializer(serializers.Serializer):
     def save(self, **kwargs):
         req = self.context["seller_request"]
         action = self.validated_data["action"]
+        reason = self.validated_data.get("reason", "")
 
         with transaction.atomic():
             if action == self.ACTION_APPROVE:
-
-                if hasattr(req,'approve'):
-                    req.approve()
-                else:
-                    req.status = "approved"
-                    req.save(update_fields=['status'])
-
+                seller = seller_approval.approve_request(req)
+                return seller
             else:
-                if hasattr(req,'reject'):
-                    req.reject(reaseon=self.validated_data.get('reason',''))
-                else:
-                    req.status = 'rejected'
-                    if hasattr(req,'reason'):
-                        req.reason = self.validated_data.get('reason','')
-                        req.save(update_fields=['status','reason'])
-                    else:
-                        req.save(update_fields=['status'])
-        return req
+                seller_approval.reject_request(req, reason=reason)
+                return req
 
 
 class SellerRequestMyStatusSerializer(serializers.ModelSerializer):
