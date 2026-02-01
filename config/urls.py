@@ -6,6 +6,7 @@ from django.conf.urls.static import static
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 # ======================================================
 # 1) REAL API ROUTES (BACKEND API)
@@ -22,7 +23,7 @@ public_api_patterns = [
 # -------- SELLER API --------
 seller_api_patterns = [
     # Seller public + me endpoints
-    # path("api/v1/sellers/", include("seller_modul.urls.urls_core")),
+    path("api/v1/sellers/", include("seller_modul.urls")),
 ]
 
 
@@ -70,6 +71,7 @@ schema_seller = get_schema_view(
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
+    authentication_classes=[JWTAuthentication],
     patterns=seller_api_patterns,
 )
 
@@ -100,7 +102,7 @@ urlpatterns = [
     path("docs/", schema_public.with_ui("swagger", cache_timeout=0), name="docs-public"),
 
     # Seller API docs
-    # path("docs/seller/", schema_seller.with_ui("swagger", cache_timeout=0), name="docs-seller"),
+    path("docs/seller/", schema_seller.with_ui("swagger", cache_timeout=0), name="docs-seller"),
 
     # Admin API docs
     path("docs/admin/", schema_admin.with_ui("swagger", cache_timeout=0), name="docs-admin"),
