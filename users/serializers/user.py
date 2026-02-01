@@ -8,7 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     profile = ProfileSerializer(read_only=True)
     full_name = serializers.SerializerMethodField()
-    is_seller = serializers.BooleanField(read_only=True)
+    is_seller = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -32,8 +32,11 @@ class UserSerializer(serializers.ModelSerializer):
             'slug',
             'is_seller'
         )
-    def get_full_name(self,obj):
-        return obj.full_name()
 
-    def get_is_seller(self,obj):
-        return getattr(obj,'is_seller',False)
+    def get_full_name(self, obj):
+        # User.full_name is a property now
+        return getattr(obj, 'full_name', '')
+
+    def get_is_seller(self, obj):
+        return bool(getattr(obj, 'is_seller', False))
+
