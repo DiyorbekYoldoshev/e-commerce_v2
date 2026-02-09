@@ -13,7 +13,7 @@ class Category(BaseModel):
     # 3 - choices
     TYPE_MAIN = "main"
     TYPE_SUB = "sub"
-
+    
     TYPE_CHOICES = [
         (TYPE_MAIN,"Asosiy"),
         (TYPE_SUB,"Quyi bo'lim")
