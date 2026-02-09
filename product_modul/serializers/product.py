@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from . import ProductVariantSerializer, ReviewSerializer
+from product_modul.serializers.variant import ProductVariantSerializer
+from product_modul.serializers.review import ReviewSerializer
 from ..models.product import Product
 
 
@@ -51,7 +52,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'seller_name',
             'average_rating',
             'reviews_count',
-            'variants',
+            'variant',
             'reviews',
             'is_wishlisted',
             'created_at',
@@ -86,5 +87,9 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        validated_data['seller'] = self.context['request'].user
+        user = self.context['request'].user
+        if user.is_anonymous:
+            from rest_framework.exceptions import NotAuthenticated
+            raise NotAuthenticated('Authentication credentials were not provided.')
+        validated_data['seller'] = user
         return super().create(validated_data)
