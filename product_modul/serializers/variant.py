@@ -18,7 +18,8 @@ class VariantAttributeValueSerializer(serializers.ModelSerializer):
 
 class ProductVariantSerializer(serializers.ModelSerializer):
 
-    attribute = VariantAttributeValueSerializer(many=True,read_only=True)
+    # related_name on VariantAttributeValue is 'attributes'
+    attributes = VariantAttributeValueSerializer(many=True,read_only=True)
 
     class Meta:
         model = ProductVariant
