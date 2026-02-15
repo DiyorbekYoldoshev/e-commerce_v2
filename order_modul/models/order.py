@@ -177,4 +177,3 @@ class InstallmentPayment(BaseModel):
 
     def __str__(self):
         return f"Payment for {self.installment.order.user}, month {self.month}"
-
