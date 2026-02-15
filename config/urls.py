@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
 
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -26,6 +27,18 @@ seller_api_patterns = [
     path("api/v1/sellers/", include("seller_modul.urls")),
 ]
 
+category_api_patterns = [
+    path('api/v1/categories/',include('category_modul.urls')),
+]
+
+product_api_patterns = [
+    path('api/v1/product/',include('product_modul.urls')),
+]
+
+# ---------- ORDER API ----------
+order_api_patterns = [
+    path('api/v1/orders/', include('order_modul.urls')),
+]
 
 # -------- ADMIN API --------
 admin_api_patterns = [
@@ -42,6 +55,9 @@ all_api_patterns = (
     public_api_patterns
     + seller_api_patterns
     + admin_api_patterns
+    + category_api_patterns
+    + product_api_patterns
+    + order_api_patterns
 )
 
 # ======================================================
@@ -60,6 +76,30 @@ schema_public = get_schema_view(
     public=True,
     permission_classes=[permissions.AllowAny],
     patterns=public_api_patterns,
+)
+
+# ---------- CATEGORY SWAGGER ----------
+schema_category = get_schema_view(
+    openapi.Info(
+        title="E-Commerce Category API",
+        default_version="v1",
+        description="Category endpoints documentation",
+    ),
+    public=True,
+    permission_classes=[permissions.AllowAny],
+    patterns=category_api_patterns,
+)
+
+# ---------- PRODUCTS SWAGGER ----------
+schema_product = get_schema_view(
+    openapi.Info(
+        title="E-Commerce Product API",
+        default_version="v1",
+        description="Product endpoints documentation",
+    ),
+    public=True,
+    permission_classes=[permissions.AllowAny],
+    patterns=product_api_patterns,
 )
 
 # ---------- SELLER SWAGGER ----------
@@ -87,6 +127,18 @@ schema_admin = get_schema_view(
     patterns=admin_api_patterns,
 )
 
+# ---------- ALL API SWAGGER (unified docs) ----------
+schema_all = get_schema_view(
+    openapi.Info(
+        title="E-Commerce API - All",
+        default_version="v1",
+        description="All API endpoints documentation (public, seller, category, admin)",
+    ),
+    public=True,
+    permission_classes=[permissions.AllowAny],
+    patterns=all_api_patterns,
+)
+
 # ======================================================
 # 3) MAIN URLPATTERNS
 # ======================================================
@@ -95,11 +147,16 @@ urlpatterns = [
 
     # Django admin panel
     path("admin/", admin.site.urls),
+# Admin dashboard static fallback served by Django
+    path('admin-dashboard/', TemplateView.as_view(template_name='admin_dashboard.html'), name='admin-dashboard'),
 
     # ---------------- SWAGGER UI ----------------
 
-    # Public API docs
-    path("docs/", schema_public.with_ui("swagger", cache_timeout=0), name="docs-public"),
+    # Public API docs (now unified)
+    path("docs/", schema_all.with_ui("swagger", cache_timeout=0), name="docs-public"),
+
+    # Category API docs
+    path('docs/category/', schema_category.with_ui("swagger", cache_timeout=0), name="docs-category"),
 
     # Seller API docs
     path("docs/seller/", schema_seller.with_ui("swagger", cache_timeout=0), name="docs-seller"),
