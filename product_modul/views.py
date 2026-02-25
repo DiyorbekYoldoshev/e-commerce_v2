@@ -1,3 +1,4 @@
+from django.db.models import Avg, Count
 from django.shortcuts import render
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
@@ -34,8 +35,12 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     queryset = (
         Product.objects.all()
-        .select_related('category', 'seller')
-        .prefetch_related('variants', 'reviews')
+        .select_related("category", "seller")
+        .prefetch_related("variants", "reviews")  # ✅ variants
+        .annotate(
+            average_rating=Avg("reviews__rating"),
+            reviews_count=Count("reviews", distinct=True),
+        )
     )
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'slug', 'description']
@@ -62,7 +67,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # serializer.create will use request from context if needed
-        serializer.save()
+        serializer.save(seller=self.request.user)
 
     @action(detail=True, methods=['get'], url_path='variants')
     def list_variants(self, request, pk=None):
