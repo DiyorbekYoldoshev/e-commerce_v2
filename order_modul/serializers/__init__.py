@@ -1,4 +1,4 @@
-from .coupon import CouponSerializer
+# from .coupon import CouponSerializer
 from .order_item import OrderItemSerializer, OrderItemCreateSerializer
 from .order import (
     OrderListSerializer,

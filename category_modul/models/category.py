@@ -117,4 +117,4 @@ class Attribute(BaseModel):
     categories = models.ManyToManyField(Category, related_name="attribute")
 
     def __str__(self):
-        return self.name
+        return self.name or ""
