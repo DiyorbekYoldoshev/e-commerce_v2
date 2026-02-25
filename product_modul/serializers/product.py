@@ -24,46 +24,45 @@ class ProductListSerializer(serializers.ModelSerializer):
         )
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-
-    category_name = serializers.CharField(source='category.name',read_only=True)
-    seller_name = serializers.CharField(source='seller.full_name',read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    seller_name = serializers.CharField(source="seller.email", read_only=True)
 
     average_rating = serializers.FloatField(read_only=True)
     reviews_count = serializers.IntegerField(read_only=True)
 
-    variant = ProductVariantSerializer(many=True,read_only=True)
-    reviews = ReviewSerializer(many=True,read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
+    reviews = ReviewSerializer(many=True, read_only=True)
 
     is_wishlisted = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = (
-            'id',
-            'name',
-            'slug',
-            'description',
-            'base_price',
-            'base_stock',
-            'image',
-            'category',
-            'category_name',
-            'seller',
-            'seller_name',
-            'average_rating',
-            'reviews_count',
-            'variant',
-            'reviews',
-            'is_wishlisted',
-            'created_at',
-            'updated_at'
+            "id",
+            "name",
+            "slug",
+            "description",
+            "base_price",
+            "base_stock",
+            "image",
+            "category",
+            "category_name",
+            "seller",
+            "seller_name",
+            "average_rating",
+            "reviews_count",
+            "variants",
+            "reviews",
+            "is_wishlisted",
+            "created_at",
+            "updated_at",
         )
 
-    def get_is_wishlisted(self,obj):
-        user = self.context['request'].user
-        if user.is_anonymous:
+    def get_is_wishlisted(self, obj):
+        request = self.context.get("request")
+        if not request or request.user.is_anonymous:
             return False
-        return obj.wishlisted_by.filter(user=user)
+        return obj.wishlisted_by.filter(user=request.user).exists()
 
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):
@@ -78,7 +77,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'description',
             'image',
             'expiration_date',
-            'is_active'
+            'status'
         )
 
     def validate(self, attrs):
@@ -86,10 +85,3 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         instance.clean()
         return attrs
 
-    def create(self, validated_data):
-        user = self.context['request'].user
-        if user.is_anonymous:
-            from rest_framework.exceptions import NotAuthenticated
-            raise NotAuthenticated('Authentication credentials were not provided.')
-        validated_data['seller'] = user
-        return super().create(validated_data)

@@ -26,4 +26,4 @@ class CanEditOnlyPendingOrder(BasePermission):
     CANCELLED bo‘lsa — delete yo‘q
     """
     def has_object_permission(self, request, view, obj):
-        return obj.status == 'pending'
+        return obj.status_choices == 'pending'

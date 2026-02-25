@@ -2,9 +2,13 @@ from rest_framework import serializers
 from ..models.order import OrderItem
 
 class OrderItemSerializer(serializers.ModelSerializer):
-
     product_name = serializers.CharField(
-        source='product.name',
+        source='variant.product.name',
+        read_only=True
+    )
+
+    variant_sku = serializers.CharField(
+        source='variant.sku',
         read_only=True
     )
 
@@ -12,13 +16,13 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = (
             'id',
-            'product',
+            'variant',
+            'variant_sku',
             'product_name',
             'quantity',
-            'amount',
+            'unit_price',
+            'subtotal',
         )
-        read_only_fields = ('amount',)
-
 class OrderItemCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
