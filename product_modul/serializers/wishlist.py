@@ -6,12 +6,7 @@ from ..models import Wishlist
 class WishlistSerializer(serializers.ModelSerializer):
 
     product_name = serializers.CharField(source='product.name',read_only=True)
-    product_price = serializers.DecimalField(
-        source='product.base_price',
-        max_digits=10,
-        decimal_places=2,
-        read_only=True
-    )
+    product_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Wishlist

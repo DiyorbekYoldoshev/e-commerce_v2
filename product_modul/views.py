@@ -1,4 +1,5 @@
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Sum, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import render
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
@@ -33,15 +34,12 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     swagger_tags = ["Product"]
 
-    queryset = (
-        Product.objects.all()
-        .select_related("category", "seller")
-        .prefetch_related("variants", "reviews")  # ✅ variants
-        .annotate(
-            average_rating=Avg("reviews__rating"),
-            reviews_count=Count("reviews", distinct=True),
-        )
+    queryset = Product.objects.select_related("category", "seller").annotate(
+        average_rating=Coalesce(Avg("reviews__rating"), Value(0.0)),
+        reviews_count=Count("reviews", distinct=True),
+        total_stock=Coalesce(Sum("variants__stock"), Value(0)),
     )
+
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'slug', 'description']
     ordering_fields = ['created_at', 'base_price', 'name']
@@ -101,7 +99,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         serializer = ReviewCreateSerializer(data=request.data, context={'request': request, 'product': product})
         serializer.is_valid(raise_exception=True)
-        review = serializer.save()
+        review = serializer.save(user=request.user, product=product)
         out = ReviewSerializer(review, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -119,14 +117,6 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return [AllowAny()]
         return [IsProductOwnerOrReadOnly()]
-
-    def perform_create(self, serializer):
-        # require product field provided in request data
-        product_id = self.request.data.get('product')
-        if not product_id:
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError('product field is required')
-        serializer.save()
 
 
 class ReviewViewSet(viewsets.ReadOnlyModelViewSet):
