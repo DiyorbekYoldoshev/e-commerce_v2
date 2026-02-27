@@ -8,11 +8,11 @@ def get_profile(*,user):
 @transaction.atomic
 def update_profile(*,user,phone=None,bio=None,avatar=None) ->Profile:
     profile,_=Profile.objects.get_or_create(user=user)
-    if phone is None:
+    if phone is not None:
         profile.phone = phone
-    if bio is None:
+    if bio is not None:
         profile.bio = bio
-    if avatar is None:
+    if avatar is not None:
         profile.avatar = avatar
 
     profile.save()

@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from rest_framework import serializers
 
 from product_modul.serializers.variant import ProductVariantSerializer
@@ -10,6 +11,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     average_rating = serializers.FloatField(read_only=True)
     reviews_count = serializers.IntegerField(read_only=True)
 
+    total_stock = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Product
         fields = (
@@ -17,11 +20,13 @@ class ProductListSerializer(serializers.ModelSerializer):
             'name',
             'slug',
             'base_price',
-            'base_stock',
+            'total_stock',
             'image',
             'average_rating',
             'reviews_count',
         )
+    def get_total_stock(self,obj):
+        return obj.variants.aggregate(total=Sum('stock'))['total'] or 0
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
@@ -35,6 +40,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     is_wishlisted = serializers.SerializerMethodField()
 
+    total_stock = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Product
         fields = (
@@ -43,7 +50,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "slug",
             "description",
             "base_price",
-            "base_stock",
+            "total_stock",
             "image",
             "category",
             "category_name",
@@ -57,6 +64,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+    def get_total_stock(self,obj):
+        total = 0
+        for v in obj.variants.all():
+            total += v.stock
+        return total
 
     def get_is_wishlisted(self, obj):
         request = self.context.get("request")
@@ -72,7 +84,6 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         fields = (
             'name',
             'base_price',
-            'base_stock',
             'category',
             'description',
             'image',

@@ -23,4 +23,4 @@ class Profile(BaseModel):
     history = HistoricalRecords()
     # 5 - str
     def __str__(self):
-        return self.user.full_name()
+        return self.user.first_name()

@@ -68,6 +68,10 @@ class SellerRequest(BaseModel):
 
     status = models.CharField(max_length=8,choices=STATUS_CHOICES,default=STATUS_PENDING)
     history = HistoricalRecords()
+
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_reason = models.TextField(blank=True, default="")
+
     class Meta:
         verbose_name = 'Seller Request'
         verbose_name_plural = 'Seller Requests'
