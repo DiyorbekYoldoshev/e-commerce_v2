@@ -10,7 +10,7 @@ def user_create_profile(sender,instance,created,**kwargs):
     if created:
 
         with transaction.atomic():
-            Profile.objects.create(user=instance)
+            Profile.objects.get_or_create(user=instance)
 
 @receiver(post_delete, sender=Profile)
 def cleanup_profile_avatar(sender, instance, **kwargs):

@@ -2,7 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from ..models import Seller, SellerRequest
+from seller_modul.models.seller import Seller, SellerRequest
+
 
 @transaction.atomic
 def approve_request(request_obj: SellerRequest) -> Seller:
@@ -16,21 +17,25 @@ def approve_request(request_obj: SellerRequest) -> Seller:
         address=request_obj.address,
         description=request_obj.description,
         is_active=True,
-        is_verified=True
+        is_verified=True,
     )
 
     request_obj.status = SellerRequest.STATUS_APPROVED
     request_obj.reviewed_at = timezone.now()
-    request_obj.save(update_fields=['status', 'reviewed_at'])
+    request_obj.review_reason = ""
+    request_obj.save(update_fields=["status", "reviewed_at", "review_reason"])
 
     return seller
 
-@transaction.atomic
-def reject_request(request_obj:SellerRequest,reason=None):
 
+@transaction.atomic
+def reject_request(request_obj: SellerRequest, reason: str = ""):
     if request_obj.status != SellerRequest.STATUS_PENDING:
-        raise ValidationError("Bu ariza oldin ko'rib chiqilgan")
+        raise ValidationError("Bu ariza oldin ko‘rib chiqilgan")
 
     request_obj.status = SellerRequest.STATUS_REJECTED
     request_obj.reviewed_at = timezone.now()
-    request_obj.save(update_fields=['status','reviewed_at'])
+    request_obj.review_reason = reason or ""
+    request_obj.save(update_fields=["status", "reviewed_at", "review_reason"])
+
+    return request_obj

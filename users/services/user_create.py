@@ -35,18 +35,23 @@ def create_user(
     return user
 
 @transaction.atomic
-def create_superuser(
-        *,
-        email:str,
-        password:str,
-        **extra_fields
-    ) -> User:
-    extra_fields.setdefault('is_staff',True)
-    extra_fields.setdefault('is_superuser',True)
-    extra_fields.setdefault('is_active',True)
-    return create_superuser(email=email,password=password,**extra_fields)
+def create_superuser(*, email: str, password: str, **extra_fields) -> User:
+    if not email:
+        raise ValidationError({"email": "Email bo'lishi kerak"})
 
+    email = User.objects.normalize_email(email).lower().strip()
+    validate_password(password)
 
+    extra_fields.setdefault("is_staff", True)
+    extra_fields.setdefault("is_superuser", True)
+    extra_fields.setdefault("is_active", True)
+
+    try:
+        user = User.objects.create_superuser(email=email, password=password, **extra_fields)
+    except IntegrityError:
+        raise ValidationError({"email": "Bu email oldin ro'yxatdan o'tgan"})
+
+    return user
 
 
 
