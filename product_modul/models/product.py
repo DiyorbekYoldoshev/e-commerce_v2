@@ -30,7 +30,7 @@ class Product(BaseModel):
         decimal_places=2,
         validators=[MinValueValidator(0)],
     )
-    base_stock = models.PositiveIntegerField(default=0)
+    # base_stock = models.PositiveIntegerField(default=0)
 
     status = models.CharField(
         max_length=11,
