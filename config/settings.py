@@ -27,8 +27,7 @@ SECRET_KEY = 'django-insecure-rht2)wyr&5_!h02h+yx(@48fw(8&%qwzomzge-0k-v+1x7y18p
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["10.125.58.41", "127.0.0.1","*"]
 
 # Application definition
 
@@ -40,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_extensions',
+
     'rest_framework_simplejwt',
     'drf_yasg',
     'simple_history',
@@ -51,17 +52,20 @@ INSTALLED_APPS = [
     'core',
 
 ]
+INSTALLED_APPS += ['corsheaders']
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
 ]
+
 
 ROOT_URLCONF = 'config.urls'
 
@@ -169,3 +173,15 @@ SWAGGER_SETTINGS = {
     },
     "SECURITY_REQUIREMENTS":[{"Bearer":[]}]
 }
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+]
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PATCH",
+    "PUT",
+    "DELETE",
+    "OPTIONS",
+]

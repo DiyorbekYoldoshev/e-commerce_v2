@@ -55,6 +55,8 @@ class CategoryViewSet(viewsets.ModelViewSet):
         )
         if self.action in read_actions:
             return [AllowAny()]
+        if self.action == "create":
+            return [IsAdmin()]
         return [IsAdmin()]  # write actionlar
 
     # ----------------- Tree actions -----------------

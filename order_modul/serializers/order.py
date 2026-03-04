@@ -7,6 +7,9 @@ from ..models.order import Order, OrderItem
 from .order_item import OrderItemSerializer, OrderItemCreateSerializer
 from ..services import create_order
 
+class OrderItemInputSerializer(serializers.Serializer):
+    variant = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
 
 class OrderListSerializer(serializers.ModelSerializer):
     items_count = serializers.IntegerField(source="items.count", read_only=True)
@@ -35,12 +38,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ("total_amount", "discount_amount", "payable_amount")
 
 class OrderCreateSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, write_only=True)
-
+    items = OrderItemInputSerializer(many=True, write_only=True)
     class Meta:
         model = Order
         fields = ("id", "address", "phone", "items", "is_installment")
-        read_only_fields = ("id",)
+
 
     def create(self, validated_data):
         request = self.context["request"]
