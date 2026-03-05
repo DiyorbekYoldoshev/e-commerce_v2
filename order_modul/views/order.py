@@ -25,13 +25,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "patch", "put", "head", "options", "delete"]
 
     def get_permissions(self):
-        # action decorator permission_classes bo'lsa, o'shani ishlatadi
+        if not self.action:
+            return [IsAuthenticated()]
+
+        # action decorator permission_classes bo'lsa
         action_method = getattr(self, self.action, None)
         if action_method and hasattr(action_method, "permission_classes"):
             return [p() for p in action_method.permission_classes]
 
         if self.action in ("list", "retrieve", "create", "cancel"):
             return [IsAuthenticated()]
+
         return [IsAdmin()]
 
     def get_queryset(self):

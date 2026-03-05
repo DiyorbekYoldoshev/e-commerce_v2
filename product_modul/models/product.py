@@ -21,6 +21,8 @@ class Product(BaseModel):
         (STATUS_ARCHIVED, "Arxivlangan"),
     ]
 
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,null=True,blank=True)
+
     # fields
     name = models.CharField(max_length=200)
     description = models.TextField()
