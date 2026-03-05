@@ -3,7 +3,7 @@ app_name = 'product_modul'
 from rest_framework.routers import DefaultRouter
 from django.urls import include,path
 
-from .views import ProductViewSet,ProductVariantViewSet,ReviewViewSet
+from .views import ProductViewSet, ReviewViewSet, ProductVariantViewSet
 
 router = DefaultRouter()
 router.register(r'product',ProductViewSet,basename='product')

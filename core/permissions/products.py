@@ -6,10 +6,17 @@ class IsProductOwnerOrReadOnly(BasePermission):
         if request.method in SAFE_METHODS:
             return True
 
-        if not request.user or not request.user.is_authenticated:
+        user = request.user
+        if not user or not user.is_authenticated:
             return False
 
-        if request.user.is_staff or request.user.is_superuser:
+        if user.is_staff or user.is_superuser:
             return True
 
-        return obj.seller_id == request.user.id
+        if hasattr(obj, "product") and hasattr(obj.product, "seller_id"):
+            return obj.product.seller_id == user.id
+
+        if hasattr(obj, "seller_id"):
+            return obj.seller_id == user.id
+
+        return False
