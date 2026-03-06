@@ -2,7 +2,7 @@ from django.db.models import Avg, Count, Sum, Value
 from django.db.models.functions import Coalesce
 
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
@@ -68,6 +68,21 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return [IsAuthenticatedAndActive()]
 
+    def get_queryset(self):
+        qs = Product.objects.select_related("category", "seller").annotate(
+            average_rating=Coalesce(Avg("reviews__rating"), Value(0.0)),
+            reviews_count=Count("reviews", distinct=True),
+            total_stock=Coalesce(Sum("variants__stock"), Value(0)),
+        )
+
+        if self.action in ("list", "retrieve"):
+            return qs
+
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+
+        return qs.filter(seller=self.request.user)
+
     def perform_create(self, serializer):
         serializer.save(seller=self.request.user)
 
@@ -120,7 +135,20 @@ class ProductViewSet(viewsets.ModelViewSet):
         out = ReviewSerializer(review, context={"request": request})
         return Response(out.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["get"], url_path="my-products", permission_classes=[IsAuthenticatedAndActive])
+    def my_products(self, request):
+        qs = Product.objects.filter(seller=request.user).select_related("category", "seller").annotate(
+            average_rating=Coalesce(Avg("reviews__rating"), Value(0.0)),
+            reviews_count=Count("reviews", distinct=True),
+            total_stock=Coalesce(Sum("variants__stock"), Value(0)),
+        )
 
+        category_id = request.query_params.get("category")
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+
+        serializer = ProductListSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 class ProductVariantViewSet(viewsets.ModelViewSet):
     """Variant CRUD via /product-variant/.
     - list/retrieve public
