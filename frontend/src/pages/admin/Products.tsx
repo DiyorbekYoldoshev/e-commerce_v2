@@ -29,30 +29,24 @@ const AdminProducts: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Mahsulotlar</h1>
-        <form onSubmit={handleSearch} className="relative">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
+        <h1 className="text-xl md:text-2xl font-bold">Mahsulotlar</h1>
+        <form onSubmit={handleSearch} className="relative w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Qidirish..."
-            className="pl-9 w-64"
-          />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Qidirish..." className="pl-9 w-full sm:w-64" />
         </form>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Rasmi</TableHead>
-              <TableHead>Nomi</TableHead>
-              <TableHead>Narxi</TableHead>
-              <TableHead>Stock</TableHead>
-              <TableHead>Reyting</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="whitespace-nowrap">ID</TableHead>
+              <TableHead className="whitespace-nowrap">Nomi</TableHead>
+              <TableHead className="whitespace-nowrap">Narxi</TableHead>
+              <TableHead className="whitespace-nowrap hidden sm:table-cell">Stock</TableHead>
+              <TableHead className="whitespace-nowrap hidden md:table-cell">Reyting</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -63,25 +57,12 @@ const AdminProducts: React.FC = () => {
             ) : products.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-mono text-xs">{p.id}</TableCell>
+                <TableCell className="font-medium text-xs md:text-sm max-w-[150px] truncate">{p.name}</TableCell>
+                <TableCell className="font-mono text-xs whitespace-nowrap">{Number(p.base_price).toLocaleString()} so'm</TableCell>
+                <TableCell className="hidden sm:table-cell">{p.total_stock}</TableCell>
+                <TableCell className="hidden md:table-cell">⭐ {p.average_rating?.toFixed(1)} ({p.reviews_count})</TableCell>
                 <TableCell>
-                    {p.image ? (
-                      <img
-                        src={p.image}
-                        alt={p.name}
-                        className="h-10 w-10 rounded-md object-cover border"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                        No img
-                      </div>
-                    )}
-                    </TableCell>
-                <TableCell className="font-medium">{p.name}</TableCell>
-                <TableCell className="font-mono">{p.base_price} so'm</TableCell>
-                <TableCell>{p.total_stock}</TableCell>
-                <TableCell>⭐ {p.average_rating?.toFixed(1)} ({p.reviews_count})</TableCell>
-                <TableCell>
-                  <Badge variant={p.status === "active" ? "default" : "secondary"}>
+                  <Badge variant={p.status === "active" ? "default" : "secondary"} className="text-xs">
                     {p.status === "active" ? "Faol" : "Arxiv"}
                   </Badge>
                 </TableCell>

@@ -23,17 +23,17 @@ const AdminSellers: React.FC = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Sellerlar</h1>
-      <div className="rounded-lg border bg-card">
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Sellerlar</h1>
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Do'kon nomi</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Telefon</TableHead>
-              <TableHead>Reyting</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="whitespace-nowrap">ID</TableHead>
+              <TableHead className="whitespace-nowrap">Do'kon</TableHead>
+              <TableHead className="whitespace-nowrap hidden sm:table-cell">Email</TableHead>
+              <TableHead className="whitespace-nowrap hidden md:table-cell">Telefon</TableHead>
+              <TableHead className="whitespace-nowrap hidden sm:table-cell">Reyting</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -44,15 +44,15 @@ const AdminSellers: React.FC = () => {
             ) : sellers.map((s) => (
               <TableRow key={s.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelected(s)}>
                 <TableCell className="font-mono text-xs">{s.id}</TableCell>
-                <TableCell className="font-medium">{s.shop_name}</TableCell>
-                <TableCell>{s.user_email}</TableCell>
-                <TableCell>{s.phone_number}</TableCell>
-                <TableCell>⭐ {s.rating?.toFixed(1)}</TableCell>
+                <TableCell className="font-medium text-xs md:text-sm">{s.shop_name}</TableCell>
+                <TableCell className="hidden sm:table-cell text-xs">{s.user_email}</TableCell>
+                <TableCell className="hidden md:table-cell text-xs">{s.phone_number}</TableCell>
+                <TableCell className="hidden sm:table-cell">⭐ {s.rating?.toFixed(1)}</TableCell>
                 <TableCell>
-                  <div className="flex gap-1">
-                    {s.is_active && <Badge className="bg-green-600 text-white">Faol</Badge>}
-                    {s.is_blocked && <Badge variant="destructive">Bloklangan</Badge>}
-                    {s.is_verified && <Badge variant="outline">Tasdiqlangan</Badge>}
+                  <div className="flex gap-1 flex-wrap">
+                    {s.is_active && <Badge className="bg-green-600 text-white text-[10px]">Faol</Badge>}
+                    {s.is_blocked && <Badge variant="destructive" className="text-[10px]">Blok</Badge>}
+                    {s.is_verified && <Badge variant="outline" className="text-[10px]">✓</Badge>}
                   </div>
                 </TableCell>
               </TableRow>
@@ -62,7 +62,7 @@ const AdminSellers: React.FC = () => {
       </div>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selected?.shop_name}</DialogTitle>
           </DialogHeader>

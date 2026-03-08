@@ -176,3 +176,23 @@ class AdminUserViewSet(ReadOnlyModelViewSet):
             has_seller=Exists(Seller.objects.filter(user_id=OuterRef("pk")))
         ).filter(has_seller=True, is_deleted=False)
         return Response(self.get_serializer(qs, many=True, context={"request": request}).data)
+
+    @action(detail=True, methods=["patch"], url_path="block")
+    def block_user(self, request, pk=None):
+        try:
+            user = self.get_queryset().get(pk=pk)
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            return Response({"message": "Foydalanuvchi bloklandi"}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"detail": "User topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["delete"], url_path="delete")
+    def delete_user(self, request, pk=None):
+        try:
+            user = self.get_queryset().get(pk=pk)
+            user.is_deleted = True  # soft delete
+            user.save(update_fields=["is_deleted"])
+            return Response({"message": "Foydalanuvchi o'chirildi"}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"detail": "User topilmadi"}, status=status.HTTP_404_NOT_FOUND)

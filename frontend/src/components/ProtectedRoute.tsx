@@ -8,11 +8,7 @@ interface Props {
   requireSeller?: boolean;
 }
 
-const ProtectedRoute: React.FC<Props> = ({
-  children,
-  requireAdmin = false,
-  requireSeller = false,
-}) => {
+const ProtectedRoute: React.FC<Props> = ({ children, requireAdmin, requireSeller }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -23,19 +19,9 @@ const ProtectedRoute: React.FC<Props> = ({
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // admin uchun
-  if (requireAdmin && !user.is_staff) {
-    return <Navigate to="/" replace />;
-  }
-
-  // seller uchun
-  if (requireSeller && !user.is_seller) {
-    return <Navigate to="/" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (requireAdmin && !(user.is_staff && user.is_superuser)) return <Navigate to="/" replace />;
+  if (requireSeller && !user.is_seller) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 };

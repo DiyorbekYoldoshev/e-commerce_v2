@@ -59,7 +59,7 @@ const AdminCategories: React.FC = () => {
       await categoryApi.delete(id);
       toast({ title: "O'chirildi" });
       load();
-    } catch (err: any) {
+    } catch {
       toast({ title: "Xatolik", variant: "destructive" });
     }
   };
@@ -72,22 +72,22 @@ const AdminCategories: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Kategoriyalar</h1>
-        <Button onClick={() => { setForm({ name: "", type: "main", parent: "" }); setEditId(null); setDialogOpen(true); }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
+        <h1 className="text-xl md:text-2xl font-bold">Kategoriyalar</h1>
+        <Button size="sm" onClick={() => { setForm({ name: "", type: "main", parent: "" }); setEditId(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" /> Qo'shish
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Nomi</TableHead>
-              <TableHead>Turi</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Quyi bo'limlar</TableHead>
+              <TableHead className="whitespace-nowrap">ID</TableHead>
+              <TableHead className="whitespace-nowrap">Nomi</TableHead>
+              <TableHead className="whitespace-nowrap">Turi</TableHead>
+              <TableHead className="whitespace-nowrap hidden sm:table-cell">Slug</TableHead>
+              <TableHead className="whitespace-nowrap hidden md:table-cell">Quyi</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -99,21 +99,21 @@ const AdminCategories: React.FC = () => {
             ) : categories.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-mono text-xs">{c.id}</TableCell>
-                <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell className="font-medium text-xs md:text-sm">{c.name}</TableCell>
                 <TableCell>
-                  <Badge variant={c.type === "main" ? "default" : "secondary"}>
+                  <Badge variant={c.type === "main" ? "default" : "secondary"} className="text-[10px]">
                     {c.type === "main" ? "Asosiy" : "Quyi"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{c.slug}</TableCell>
-                <TableCell>{c.children?.length || 0}</TableCell>
+                <TableCell className="text-muted-foreground text-xs hidden sm:table-cell">{c.slug}</TableCell>
+                <TableCell className="hidden md:table-cell">{c.children?.length || 0}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
-                      <Edit className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}>
+                      <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(c.id)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </div>
                 </TableCell>

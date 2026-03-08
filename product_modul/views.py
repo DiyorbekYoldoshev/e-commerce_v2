@@ -3,7 +3,7 @@ from django.db.models.functions import Coalesce
 
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from core.permissions import (
@@ -106,25 +106,40 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer.save(product=product)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="wishlist",
+        permission_classes=[IsAuthenticatedAndActive]
+    )
+    def user_wishlist(self, request):
+        qs = Wishlist.objects.filter(user=request.user).select_related("product")
+        serializer = WishlistSerializer(qs, many=True, context={"request": request})
+        return Response(serializer.data)
 
-    @action(detail=True, methods=["post"], url_path="wishlist", permission_classes=[IsAuthenticatedAndActive])
-    def add_to_wishlist(self, request, pk=None):
+    @action(detail=True,methods=['post','delete'],url_path='wishlist',permission_classes=[IsAuthenticated])
+    def wishlist(self,request,pk=None):
         product = self.get_object()
         user = request.user
-        obj, created = Wishlist.objects.get_or_create(user=user, product=product)
-        serializer = WishlistSerializer(obj, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
-    @action(detail=True, methods=["delete"], url_path="wishlist", permission_classes=[IsAuthenticatedAndActive])
-    def remove_from_wishlist(self, request, pk=None):
-        product = self.get_object()
-        user = request.user
-        try:
-            item = Wishlist.objects.get(user=user, product=product)
-            item.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Wishlist.DoesNotExist:
-            return Response({"detail": "Not in wishlist"}, status=status.HTTP_404_NOT_FOUND)
+        if request.method == "POST":
+            obj,created = Wishlist.objects.get_or_create(user=user,product=product)
+            serializer = WishlistSerializer(obj,context={'request':request})
+            return Response(
+                serializer.data,status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            )
+        if request.method == "DELETE":
+            try:
+                item = Wishlist.objects.get(user=user,product=product)
+                item.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            except Wishlist.DoesNotExist:
+                return Response(
+                    {
+                        'detail':"Not in Wishlist"
+                    },status=status.HTTP_404_NOT_FOUND
+                )
+
 
     @action(detail=True, methods=["post"], url_path="reviews", permission_classes=[IsAuthenticatedAndActive])
     def add_review(self, request, pk=None):

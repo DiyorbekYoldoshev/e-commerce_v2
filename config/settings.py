@@ -24,6 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-rht2)wyr&5_!h02h+yx(@48fw(8&%qwzomzge-0k-v+1x7y18p'
 
+STRIPE_PUBLIC_KEY = "pk_test_51RglE8P3RPAmmkkPtDCB1aP0ghLnfPnzAzMgPl1i4b0eLHKkvqIFNgLUoNlS483nGdVcPC4DzPQXrl50YwnMmjqR00IB1Shm9c"
+STRIPE_SECRET_KEY = "sk_test_51RglE8P3RPAmmkkPLH6KGNiI5UWedXO0Cnqb2b7lkA2TqQQvqhgi4vX31MTrSOBy28Dwc6EwDIEjpE9WPeJ6iUZX00arv3ftHq"
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -40,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_extensions',
+    'corsheaders',
 
     'rest_framework_simplejwt',
     'drf_yasg',
@@ -50,9 +54,9 @@ INSTALLED_APPS = [
     'order_modul',
     'seller_modul',
     'core',
+    'billing'
 
 ]
-INSTALLED_APPS += ['corsheaders']
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",

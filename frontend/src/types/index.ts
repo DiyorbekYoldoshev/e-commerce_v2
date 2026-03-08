@@ -94,6 +94,7 @@ export interface Order {
   address?: string;
   phone?: string;
   created_at: string;
+  installment_plan?: InstallmentPlan | null;
 }
 
 export interface OrderItem {
@@ -104,6 +105,34 @@ export interface OrderItem {
   quantity: number;
   unit_price: string;
   subtotal: string;
+}
+
+export interface InstallmentPlan {
+  id: number;
+  order: number;
+  months: number;
+  total_amount: string;
+  monthly_amount: string;
+  is_approved: boolean;
+  payments: InstallmentPayment[];
+}
+
+export interface InstallmentPayment {
+  id: number;
+  installment: number;
+  month: number;
+  amount: string;
+  is_paid: boolean;
+  paid_at: string | null;
+}
+
+export interface Payment {
+  id: number;
+  order: number;
+  stripe_payment_intent: string;
+  amount: string;
+  status: "pending" | "succeeded" | "failed";
+  created_at: string;
 }
 
 export interface Seller {

@@ -3,7 +3,7 @@ from ..models.product import Product, ProductVariant, VariantAttributeValue
 
 class VariantAttributeValueSerializer(serializers.ModelSerializer):
 
-    attribute_name = serializers.CharField(source='attribute_name',read_only=True)
+    attribute_name = serializers.CharField(source='attribute.name',read_only=True)
 
     class Meta:
         model = VariantAttributeValue

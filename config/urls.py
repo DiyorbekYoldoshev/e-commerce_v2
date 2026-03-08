@@ -16,8 +16,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 # -------- PUBLIC API --------
 public_api_patterns = [
     path("api/v1/users/", include("users.urls")),
-    # path("api/v1/products/", include("product_modul.urls")),
-    # path("api/v1/categories/", include("category_modul.urls")),
+    path("api/v1/pay/",include('billing.urls'))
 ]
 
 

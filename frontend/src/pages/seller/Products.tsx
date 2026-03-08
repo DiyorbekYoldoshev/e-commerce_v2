@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { productApi, categoryApi, variantApi } from "@/lib/api";
-import type { Product, Category, ProductVariant } from "@/types";
+import type { Product, Category, ProductVariant, VariantAttribute } from "@/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Upload, Image, Package, X } from "lucide-react";
@@ -28,64 +28,33 @@ const SellerProducts: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    base_price: "",
-    category: "",
-    status: "active",
-  });
-
+  const [form, setForm] = useState({ name: "", description: "", base_price: "", category: "", status: "active" });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Variant management
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
-  const [variantForm, setVariantForm] = useState<VariantForm>({
-    sku: "",
-    price: "",
-    stock: "",
-    attributes: [],
-  });
+  const [variantForm, setVariantForm] = useState<VariantForm>({ sku: "", price: "", stock: "", attributes: [] });
   const [editingVariant, setEditingVariant] = useState<number | null>(null);
 
   const { toast } = useToast();
 
-  const load = async (categoryId?: string) => {
+  const load = async () => {
     setLoading(true);
     try {
-      const params =
-        categoryId && categoryId !== "all" ? { category: categoryId } : {};
-
-      const [pRes, cRes] = await Promise.all([
-        productApi.myProducts(params), // ✅ faqat sellerning mahsulotlari
-        categoryApi.list(),
-      ]);
-
-      setProducts(pRes.data?.results ?? pRes.data ?? []);
-      setCategories(cRes.data?.results ?? cRes.data ?? []);
-    } catch (err: any) {
-      setProducts([]);
-      toast({
-        title: "Xatolik",
-        description: JSON.stringify(err.response?.data || err.message),
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+      const [pRes, cRes] = await Promise.all([productApi.list(), categoryApi.list()]);
+      setProducts(pRes.data?.results || pRes.data || []);
+      setCategories(cRes.data?.results || cRes.data || []);
+    } catch {}
+    setLoading(false);
   };
 
-  useEffect(() => {
-    load(selectedCategory);
-  }, [selectedCategory]);
+  useEffect(() => { load(); }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -112,18 +81,13 @@ const SellerProducts: React.FC = () => {
         await productApi.create(fd);
         toast({ title: "Qo'shildi ✓" });
       }
-
       setDialogOpen(false);
       setEditId(null);
       setImageFile(null);
       setImagePreview(null);
-      load(selectedCategory);
+      load();
     } catch (err: any) {
-      toast({
-        title: "Xatolik",
-        description: JSON.stringify(err.response?.data),
-        variant: "destructive",
-      });
+      toast({ title: "Xatolik", description: JSON.stringify(err.response?.data), variant: "destructive" });
     }
   };
 
@@ -132,7 +96,7 @@ const SellerProducts: React.FC = () => {
     try {
       await productApi.delete(id);
       toast({ title: "O'chirildi" });
-      load(selectedCategory);
+      load();
     } catch {
       toast({ title: "Xatolik", variant: "destructive" });
     }
@@ -143,39 +107,30 @@ const SellerProducts: React.FC = () => {
       name: p.name,
       description: p.description,
       base_price: p.base_price,
-      category: p.category ? p.category.toString() : "",
+      category: p.category.toString(),
       status: p.status || "active",
     });
     setEditId(p.id);
     setImageFile(null);
-    setImagePreview(
-      p.image ? (p.image.startsWith("http") ? p.image : `${API_BASE}${p.image}`) : null
-    );
+    setImagePreview(p.image ? (p.image.startsWith("http") ? p.image : `${API_BASE}${p.image}`) : null);
     setDialogOpen(true);
   };
 
   const openNew = () => {
-    setForm({
-      name: "",
-      description: "",
-      base_price: "",
-      category: "",
-      status: "active",
-    });
+    setForm({ name: "", description: "", base_price: "", category: "", status: "active" });
     setEditId(null);
     setImageFile(null);
     setImagePreview(null);
     setDialogOpen(true);
   };
 
+  // --- Variant Management ---
   const openVariants = async (p: Product) => {
     setCurrentProduct(p);
     try {
       const res = await productApi.variants(p.id);
       setVariants(res.data || []);
-    } catch {
-      setVariants([]);
-    }
+    } catch { setVariants([]); }
     setVariantForm({ sku: "", price: "", stock: "", attributes: [] });
     setEditingVariant(null);
     setVariantDialogOpen(true);
@@ -183,7 +138,6 @@ const SellerProducts: React.FC = () => {
 
   const saveVariant = async () => {
     if (!currentProduct) return;
-
     try {
       const data: any = {
         product: currentProduct.id,
@@ -191,7 +145,6 @@ const SellerProducts: React.FC = () => {
         price: variantForm.price,
         stock: Number(variantForm.stock),
       };
-
       if (editingVariant) {
         await variantApi.update(editingVariant, data);
         toast({ title: "Variant yangilandi" });
@@ -199,18 +152,13 @@ const SellerProducts: React.FC = () => {
         await variantApi.create(data);
         toast({ title: "Variant qo'shildi" });
       }
-
+      // Reload variants
       const res = await productApi.variants(currentProduct.id);
       setVariants(res.data || []);
       setVariantForm({ sku: "", price: "", stock: "", attributes: [] });
       setEditingVariant(null);
-      load(selectedCategory);
     } catch (err: any) {
-      toast({
-        title: "Xatolik",
-        description: JSON.stringify(err.response?.data),
-        variant: "destructive",
-      });
+      toast({ title: "Xatolik", description: JSON.stringify(err.response?.data), variant: "destructive" });
     }
   };
 
@@ -223,7 +171,6 @@ const SellerProducts: React.FC = () => {
         setVariants(res.data || []);
       }
       toast({ title: "Variant o'chirildi" });
-      load(selectedCategory);
     } catch {
       toast({ title: "Xatolik", variant: "destructive" });
     }
@@ -235,12 +182,11 @@ const SellerProducts: React.FC = () => {
       sku: v.sku,
       price: v.price,
       stock: v.stock.toString(),
-      attributes:
-        v.attributes?.map((a) => ({
-          attribute: a.attribute.toString(),
-          value: a.value,
-          attribute_name: a.attribute_name,
-        })) || [],
+      attributes: v.attributes?.map(a => ({
+        attribute: a.attribute.toString(),
+        value: a.value,
+        attribute_name: a.attribute_name,
+      })) || [],
     });
     setEditingVariant(v.id);
   };
@@ -267,28 +213,9 @@ const SellerProducts: React.FC = () => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Mahsulotlarim</h1>
-
-        <div className="flex items-center gap-3">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Kategoriya tanlang" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Barcha kategoriyalar</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c.id} value={c.id.toString()}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" /> Yangi mahsulot
-          </Button>
-        </div>
+        <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Yangi mahsulot</Button>
       </div>
 
       <div className="rounded-lg border bg-card">
@@ -300,83 +227,65 @@ const SellerProducts: React.FC = () => {
               <TableHead>Narxi</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead>Reyting</TableHead>
-              <TableHead>Kategoriya</TableHead>
               <TableHead>Variantlar</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
-
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  Yuklanmoqda...
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8">Yuklanmoqda...</TableCell></TableRow>
             ) : products.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  Mahsulot topilmadi
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Mahsulot topilmadi</TableCell></TableRow>
+            ) : products.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell>
+                  <div className="w-10 h-10 rounded-md overflow-hidden bg-muted">
+                    {p.image ? (
+                      <img
+                        src={p.image.startsWith("http") ? p.image : `${API_BASE}${p.image}`}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Image className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="font-medium">{p.name}</TableCell>
+                <TableCell className="font-mono">{Number(p.base_price).toLocaleString()} so'm</TableCell>
+                <TableCell>{p.total_stock}</TableCell>
+                <TableCell>⭐ {p.average_rating?.toFixed(1)}</TableCell>
+                <TableCell>
+                  <Button variant="outline" size="sm" onClick={() => openVariants(p)}>
+                    <Package className="h-3.5 w-3.5 mr-1" /> Variantlar
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : (
-              products.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    <div className="w-10 h-10 rounded-md overflow-hidden bg-muted">
-                      {p.image ? (
-                        <img
-                          src={p.image.startsWith("http") ? p.image : `${API_BASE}${p.image}`}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Image className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="font-mono">
-                    {Number(p.base_price).toLocaleString()} so'm
-                  </TableCell>
-                  <TableCell>{p.total_stock}</TableCell>
-                  <TableCell>⭐ {(Number(p.average_rating ?? 0)).toFixed(1)}</TableCell>
-                  <TableCell>{p.category_name || p.category || "—"}</TableCell>
-
-                  <TableCell>
-                    <Button variant="outline" size="sm" onClick={() => openVariants(p)}>
-                      <Package className="h-3.5 w-3.5 mr-1" /> Variantlar
-                    </Button>
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* Product Dialog */}
+      {/* Product Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "Tahrirlash" : "Yangi mahsulot"}</DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4">
+            {/* Image Upload */}
             <div className="space-y-2">
               <Label>Mahsulot rasmi</Label>
               <div
@@ -390,11 +299,7 @@ const SellerProducts: React.FC = () => {
                       variant="destructive"
                       size="icon"
                       className="absolute top-1 right-1 h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImageFile(null);
-                        setImagePreview(null);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); }}
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -403,6 +308,7 @@ const SellerProducts: React.FC = () => {
                   <div className="py-6">
                     <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">Rasm yuklash uchun bosing</p>
+                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP (max 5MB)</p>
                   </div>
                 )}
                 <input
@@ -419,71 +325,57 @@ const SellerProducts: React.FC = () => {
               <Label>Nomi</Label>
               <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
-
             <div className="space-y-2">
               <Label>Tavsif</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Narx</Label>
-                <Input
-                  type="number"
-                  value={form.base_price}
-                  onChange={(e) => setForm({ ...form, base_price: e.target.value })}
-                />
+                <Input type="number" value={form.base_price} onChange={(e) => setForm({ ...form, base_price: e.target.value })} />
               </div>
-
               <div className="space-y-2">
                 <Label>Kategoriya</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Tanlang" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Tanlang" /></SelectTrigger>
                   <SelectContent>
                     {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id.toString()}>
-                        {c.name}
-                      </SelectItem>
+                      <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Faol</SelectItem>
                   <SelectItem value="archived">Arxiv</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <Button onClick={handleSave} className="w-full">
-              {editId ? "Saqlash" : "Qo'shish"}
-            </Button>
+            <Button onClick={handleSave} className="w-full">{editId ? "Saqlash" : "Qo'shish"}</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Variant Dialog */}
+      {/* Variant Management Dialog */}
       <Dialog open={variantDialogOpen} onOpenChange={setVariantDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Variantlar — {currentProduct?.name}</DialogTitle>
+            <DialogTitle>
+              Variantlar — {currentProduct?.name}
+            </DialogTitle>
           </DialogHeader>
 
+          {/* Existing Variants */}
           {variants.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground">Mavjud variantlar</h3>
               <div className="space-y-2">
-                {variants.map((v) => (
+                {variants.map(v => (
                   <Card key={v.id} className={editingVariant === v.id ? "border-primary" : ""}>
                     <CardContent className="p-3">
                       <div className="flex items-center justify-between">
@@ -493,10 +385,9 @@ const SellerProducts: React.FC = () => {
                             <Badge variant="outline">{Number(v.price).toLocaleString()} so'm</Badge>
                             <Badge variant="secondary">Stock: {v.stock}</Badge>
                           </div>
-
                           {v.attributes && v.attributes.length > 0 && (
                             <div className="flex gap-2 flex-wrap">
-                              {v.attributes.map((a) => (
+                              {v.attributes.map(a => (
                                 <Badge key={a.id} variant="outline" className="text-xs">
                                   {a.attribute_name}: {a.value}
                                 </Badge>
@@ -504,7 +395,6 @@ const SellerProducts: React.FC = () => {
                             </div>
                           )}
                         </div>
-
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => editVariant(v)}>
                             <Edit className="h-3.5 w-3.5" />
@@ -523,70 +413,66 @@ const SellerProducts: React.FC = () => {
 
           <Separator />
 
+          {/* Add/Edit Variant Form */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold">
               {editingVariant ? "Variantni tahrirlash" : "Yangi variant qo'shish"}
             </h3>
-
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">SKU</Label>
                 <Input
                   value={variantForm.sku}
-                  onChange={(e) => setVariantForm({ ...variantForm, sku: e.target.value })}
+                  onChange={e => setVariantForm({ ...variantForm, sku: e.target.value })}
                   placeholder="SKU-001"
                 />
               </div>
-
               <div className="space-y-1">
                 <Label className="text-xs">Narx</Label>
                 <Input
                   type="number"
                   value={variantForm.price}
-                  onChange={(e) => setVariantForm({ ...variantForm, price: e.target.value })}
+                  onChange={e => setVariantForm({ ...variantForm, price: e.target.value })}
                   placeholder="0"
                 />
               </div>
-
               <div className="space-y-1">
                 <Label className="text-xs">Stock</Label>
                 <Input
                   type="number"
                   value={variantForm.stock}
-                  onChange={(e) => setVariantForm({ ...variantForm, stock: e.target.value })}
+                  onChange={e => setVariantForm({ ...variantForm, stock: e.target.value })}
                   placeholder="0"
                 />
               </div>
             </div>
 
+            {/* Attributes */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold">Atributlar</Label>
+                <Label className="text-xs font-semibold">Atributlar (rang, o'lcham va h.k.)</Label>
                 <Button variant="outline" size="sm" onClick={addAttributeRow} type="button">
                   <Plus className="h-3 w-3 mr-1" /> Atribut
                 </Button>
               </div>
-
               {variantForm.attributes.map((attr, i) => (
                 <div key={i} className="flex gap-2 items-end">
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs">Atribut ID</Label>
                     <Input
                       value={attr.attribute}
-                      onChange={(e) => updateAttribute(i, "attribute", e.target.value)}
+                      onChange={e => updateAttribute(i, "attribute", e.target.value)}
                       placeholder="1"
                     />
                   </div>
-
                   <div className="flex-1 space-y-1">
                     <Label className="text-xs">Qiymat</Label>
                     <Input
                       value={attr.value}
-                      onChange={(e) => updateAttribute(i, "value", e.target.value)}
-                      placeholder="Qora"
+                      onChange={e => updateAttribute(i, "value", e.target.value)}
+                      placeholder="Qizil"
                     />
                   </div>
-
                   <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => removeAttributeRow(i)}>
                     <X className="h-4 w-4 text-destructive" />
                   </Button>
@@ -598,7 +484,6 @@ const SellerProducts: React.FC = () => {
               <Button onClick={saveVariant} className="flex-1">
                 {editingVariant ? "Yangilash" : "Qo'shish"}
               </Button>
-
               {editingVariant && (
                 <Button
                   variant="outline"

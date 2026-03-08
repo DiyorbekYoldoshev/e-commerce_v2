@@ -57,17 +57,17 @@ const AdminSellerRequests: React.FC = () => {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Seller arizalari</h1>
-      <div className="rounded-lg border bg-card">
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Seller arizalari</h1>
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Do'kon</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Telefon</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Sana</TableHead>
+              <TableHead className="whitespace-nowrap">ID</TableHead>
+              <TableHead className="whitespace-nowrap">Do'kon</TableHead>
+              <TableHead className="whitespace-nowrap hidden sm:table-cell">Email</TableHead>
+              <TableHead className="whitespace-nowrap hidden md:table-cell">Telefon</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap hidden sm:table-cell">Sana</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -79,20 +79,20 @@ const AdminSellerRequests: React.FC = () => {
             ) : requests.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-mono text-xs">{r.id}</TableCell>
-                <TableCell className="font-medium">{r.shop_name}</TableCell>
-                <TableCell>{r.user_email || r.user}</TableCell>
-                <TableCell>{r.phone_number}</TableCell>
+                <TableCell className="font-medium text-xs md:text-sm">{r.shop_name}</TableCell>
+                <TableCell className="hidden sm:table-cell text-xs">{r.user_email || r.user}</TableCell>
+                <TableCell className="hidden md:table-cell text-xs">{r.phone_number}</TableCell>
                 <TableCell>
-                  <Badge className={`${statusColors[r.status]} text-white`}>
+                  <Badge className={`${statusColors[r.status]} text-white text-[10px]`}>
                     {statusLabels[r.status]}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">
                   {new Date(r.created_at).toLocaleDateString("uz")}
                 </TableCell>
                 <TableCell>
                   {r.status === "pending" && (
-                    <Button variant="ghost" size="sm" onClick={() => { setSelected(r); setReason(""); }}>
+                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setSelected(r); setReason(""); }}>
                       Ko'rish
                     </Button>
                   )}
@@ -104,7 +104,7 @@ const AdminSellerRequests: React.FC = () => {
       </div>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Ariza: {selected?.shop_name}</DialogTitle>
           </DialogHeader>
@@ -116,15 +116,9 @@ const AdminSellerRequests: React.FC = () => {
                 <p><span className="text-muted-foreground">Manzil:</span> {selected.address}</p>
                 <p><span className="text-muted-foreground">Tavsif:</span> {selected.description}</p>
               </div>
-
               <div>
-                <Textarea
-                  placeholder="Rad etish sababi (ixtiyoriy)..."
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                />
+                <Textarea placeholder="Rad etish sababi (ixtiyoriy)..." value={reason} onChange={(e) => setReason(e.target.value)} />
               </div>
-
               <div className="flex gap-3">
                 <Button onClick={() => handleAction("approve")} className="flex-1 bg-green-600 hover:bg-green-700">
                   <Check className="h-4 w-4 mr-2" /> Tasdiqlash

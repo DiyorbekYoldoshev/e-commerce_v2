@@ -199,7 +199,6 @@ class OrderItem(BaseModel):
                 raise ValidationError({"subtotal": "Subtotal noto‘g‘ri hisoblangan."})
 
     def save(self, *args, **kwargs):
-        # subtotalni doim qayta hisoblaymiz (xato kiritilmasin)
         if self.unit_price is not None and self.quantity:
             self.subtotal = (self.unit_price * Decimal(self.quantity)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         super().save(*args, **kwargs)
@@ -254,7 +253,6 @@ class InstallmentPayment(BaseModel):
         self.paid_at = timezone.now()
         if save:
             self.save(update_fields=["is_paid", "paid_at"])
-        # order payment_status ni yangilab qo‘yamiz
         self.installment.order.update_payment_status_from_installments(save=True)
 
     def __str__(self):
