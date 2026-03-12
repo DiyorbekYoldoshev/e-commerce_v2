@@ -31,6 +31,7 @@ STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
 ALLOWED_HOSTS = ["10.125.58.41", "127.0.0.1","localhost"]
 
 # Application definition

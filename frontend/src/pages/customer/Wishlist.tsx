@@ -24,19 +24,28 @@ const Wishlist: React.FC = () => {
 
   const loadWishlist = async () => {
     setLoading(true);
+
     try {
-      // Backend returns all products; we filter wishlisted on detail
-      // Alternative: use a dedicated wishlist endpoint if available
-      const res = await productApi.list();
-      const all: Product[] = res.data?.results || res.data || [];
-      // We'll load each to check is_wishlisted – but this is expensive.
-      // Better approach: backend provides a wishlist list endpoint
-      // For now show all products marked as wishlisted from list
-      setProducts(all.filter(p => p.is_wishlisted));
-    } catch {}
+      const res = await productApi.getWishlist();
+
+      const data = res.data?.results || res.data || [];
+
+      const products = data.map((w: any) => ({
+        id: w.product_id,
+        name: w.name,
+        base_price: w.price,
+        image: w.image,
+      }));
+
+      setProducts(products);
+
+    } catch (e) {
+      console.error("Wishlist error:", e);
+      setProducts([]);
+    }
+
     setLoading(false);
   };
-
   const removeFromWishlist = async (id: number) => {
     try {
       await productApi.removeWishlist(id);

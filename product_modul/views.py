@@ -61,7 +61,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
 
         if self.action == "create":
-            return [IsAuthenticatedAndActive(), IsSeller()]
+            return [IsAuthenticatedAndActive()]
 
         if self.action in ("update", "partial_update", "destroy"):
             return [IsAuthenticatedAndActive(), IsProductOwnerOrReadOnly()]
@@ -75,7 +75,13 @@ class ProductViewSet(viewsets.ModelViewSet):
             total_stock=Coalesce(Sum("variants__stock"), Value(0)),
         )
 
-        if self.action in ("list", "retrieve"):
+        if self.action in (
+                "list",
+                "retrieve",
+                "wishlist",
+                "add_review",
+                "variants"
+        ):
             return qs
 
         if self.request.user.is_staff or self.request.user.is_superuser:
@@ -117,7 +123,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = WishlistSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 
-    @action(detail=True,methods=['post','delete'],url_path='wishlist',permission_classes=[IsAuthenticated])
+    @action(detail=True,methods=['post','delete'],url_path='wishlist',permission_classes=[IsAuthenticatedAndActive])
     def wishlist(self,request,pk=None):
         product = self.get_object()
         user = request.user

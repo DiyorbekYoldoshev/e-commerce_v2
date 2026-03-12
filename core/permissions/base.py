@@ -12,7 +12,7 @@ class IsAuthenticatedAndActive(BasePermission):
             request.user
             and request.user.is_authenticated
             and request.user.is_active
-            and not request.user.is_deleted  # qo'shimcha tekshiruv
+            and not request.user.is_deleted
         )
 
 
