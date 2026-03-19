@@ -25,6 +25,7 @@ import Cart from "@/pages/customer/Cart";
 import Checkout from "@/pages/customer/Checkout";
 import CustomerWishlist from "@/pages/customer/Wishlist";
 import MyOrders from "@/pages/customer/MyOrders";
+import CustomerPayments from "@/pages/customer/Payments";
 import CustomerProfile from "@/pages/customer/Profile";
 
 // Admin pages
@@ -65,6 +66,7 @@ const App = () => (
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/wishlist" element={<CustomerWishlist />} />
                 <Route path="/my-orders" element={<MyOrders />} />
+                <Route path="/payments" element={<CustomerPayments />} />
                 <Route path="/profile" element={<CustomerProfile />} />
               </Route>
 

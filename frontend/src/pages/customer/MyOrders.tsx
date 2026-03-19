@@ -229,19 +229,8 @@ const MyOrders: React.FC = () => {
                       {detailOrder.items.map(item => (
                         <TableRow key={item.id}>
                           <TableCell className="text-xs">
-                              <div className="font-medium">{item.product_name}</div>
-
-                              <div className="text-muted-foreground text-[11px] space-x-2">
-                                <span>SKU: {item.variant_sku}</span>
-
-                                {item.variant_color && (
-                                  <span>• Rang: {item.variant_color}</span>
-                                )}
-
-                                {item.variant_size && (
-                                  <span>• Size: {item.variant_size}</span>
-                                )}
-                              </div>
+                            {item.product_name}
+                            <span className="text-muted-foreground ml-1">({item.variant_sku})</span>
                           </TableCell>
                           <TableCell className="text-right text-xs">{item.quantity}</TableCell>
                           <TableCell className="text-right font-mono text-xs">{Number(item.subtotal).toLocaleString()}</TableCell>

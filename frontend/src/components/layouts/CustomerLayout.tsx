@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   ShoppingCart, Heart, User, Search, LogOut, Package,
-  Menu, X, Store, ChevronDown,
+  Menu, X, Store, ChevronDown, CreditCard,
 } from "lucide-react";
 
 const CustomerLayout: React.FC = () => {
@@ -82,6 +82,9 @@ const CustomerLayout: React.FC = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/my-orders")}>
                       <Package className="h-4 w-4 mr-2" /> Buyurtmalarim
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/payments")}>
+                      <CreditCard className="h-4 w-4 mr-2" /> To'lovlarim
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/wishlist")}>
                       <Heart className="h-4 w-4 mr-2" /> Sevimlilar
