@@ -1,22 +1,20 @@
 from django.urls import path
-from .views import CreatePaymentIntent
+from .views import CreatePaymentIntent, PaymentListView
 from .webhooks import stripe_webhook
-from .views import PaymentListView
+
+app_name = "billing"
 
 urlpatterns = [
-
     path(
         "create-intent/",
         CreatePaymentIntent.as_view(),
         name="create-payment-intent"
     ),
-
     path(
         "webhook/",
         stripe_webhook,
         name="stripe-webhook"
     ),
-
     path(
         "",
         PaymentListView.as_view(),
