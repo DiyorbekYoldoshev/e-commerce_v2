@@ -11,6 +11,9 @@ class UserQuerySet(QuerySet):
     def deleted(self):
         return self.filter(is_deleted=True)
 
+    def blocked(self):
+        return self.filter(is_deleted=False,is_blocked=False)
+
     def all_with_deleted(self):
         return self
 

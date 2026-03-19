@@ -140,59 +140,66 @@ class UserViewSet(GenericViewSet):
 
 
 class AdminUserViewSet(ReadOnlyModelViewSet):
-
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
 
     def get_queryset(self):
-        qs = User.objects.all_with_deleted()
-        if self.action == "list":
-            return qs.filter(is_deleted=False)
-        return qs
+        # all users including soft deleted
+        return User.objects.all_with_deleted()
 
-    @action(methods=["get"], detail=False, url_path="active")
+    # LIST / FILTER ACTIONS
+    @action(detail=False, methods=["get"], url_path="active")
     def active(self, request):
         qs = self.get_queryset().filter(is_deleted=False, is_active=True)
-        return Response(self.get_serializer(qs, many=True, context={"request": request}).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
-    @action(methods=["get"], detail=False, url_path="blocked")
+    @action(detail=False, methods=["get"], url_path="blocked")
     def blocked(self, request):
         qs = self.get_queryset().filter(is_deleted=False, is_active=False)
-        return Response(self.get_serializer(qs, many=True, context={"request": request}).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
-    @action(methods=["get"], detail=False, url_path="deleted")
+    @action(detail=False, methods=["get"], url_path="deleted")
     def deleted(self, request):
         qs = self.get_queryset().filter(is_deleted=True)
-        return Response(self.get_serializer(qs, many=True, context={"request": request}).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
-    @action(methods=["get"], detail=False, url_path="all")
+    @action(detail=False, methods=["get"], url_path="all")
     def all_users(self, request):
         qs = self.get_queryset()
-        return Response(self.get_serializer(qs, many=True, context={"request": request}).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="sellers")
     def sellers(self, request):
         qs = self.get_queryset().annotate(
             has_seller=Exists(Seller.objects.filter(user_id=OuterRef("pk")))
         ).filter(has_seller=True, is_deleted=False)
-        return Response(self.get_serializer(qs, many=True, context={"request": request}).data)
+        return Response(self.get_serializer(qs, many=True).data)
 
+    # ----------------- USER ACTIONS -----------------
     @action(detail=True, methods=["patch"], url_path="block")
     def block_user(self, request, pk=None):
-        try:
-            user = self.get_queryset().get(pk=pk)
-            user.is_active = False
-            user.save(update_fields=["is_active"])
-            return Response({"message": "Foydalanuvchi bloklandi"}, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({"detail": "User topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+        user = self.get_queryset().get(pk=pk)
+        user.is_active = not user.is_active  # toggle block/unblock
+        user.save(update_fields=["is_active"])
+        return Response({"id": user.id, "is_active": user.is_active})
 
     @action(detail=True, methods=["delete"], url_path="delete")
     def delete_user(self, request, pk=None):
+        # soft delete
         try:
             user = self.get_queryset().get(pk=pk)
-            user.is_deleted = True  # soft delete
+            user.is_deleted = True
             user.save(update_fields=["is_deleted"])
-            return Response({"message": "Foydalanuvchi o'chirildi"}, status=status.HTTP_200_OK)
+            return Response({"message": "Foydalanuvchi o'chirildi"})
+        except User.DoesNotExist:
+            return Response({"detail": "User topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["delete"], url_path="force-delete")
+    def force_delete(self, request, pk=None):
+        # hard delete
+        try:
+            user = User.objects.get(pk=pk)
+            user.delete()
+            return Response({"message": "User permanently deleted"})
         except User.DoesNotExist:
             return Response({"detail": "User topilmadi"}, status=status.HTTP_404_NOT_FOUND)

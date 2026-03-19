@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { adminApi } from "@/lib/api";
+import { adminApi, productApi } from "@/lib/api";
 import { Users, ShoppingCart, Package, Store } from "lucide-react";
 
 const AdminDashboard: React.FC = () => {
@@ -11,10 +11,10 @@ const AdminDashboard: React.FC = () => {
     const load = async () => {
       try {
         const [usersRes, ordersRes, productsRes, sellersRes] = await Promise.all([
-          adminApi.users.active(),
+          adminApi.users.all(),
           adminApi.orders.list(),
-          adminApi.products.list(),
-          adminApi.sellers.list(),
+          productApi.list(),
+          adminApi.users.sellers(),
         ]);
         setStats({
           users: usersRes.data?.length || usersRes.data?.results?.length || 0,

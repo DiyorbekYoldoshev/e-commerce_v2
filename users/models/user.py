@@ -56,6 +56,7 @@ class User(PermissionsMixin, AbstractBaseUser, BaseModel):
     is_active = models.BooleanField(default=True)
 
     is_deleted = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     # 5 - manager

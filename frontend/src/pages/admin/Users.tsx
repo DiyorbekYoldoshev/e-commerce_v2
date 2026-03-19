@@ -33,9 +33,9 @@ const AdminUsers: React.FC = () => {
   const handleDeleteOrBlock = async (user: User) => {
     try {
       if (user.is_active) {
-        await adminApi.users.block(user.id); // bloklash
+        await adminApi.users.block(user.id); //
       } else {
-        await adminApi.users.deleteUser(user.id); // soft delete
+        await adminApi.users.deleteUser(user.id); //
       }
       loadUsers(tab);
     } catch (err) {
