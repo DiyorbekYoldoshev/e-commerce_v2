@@ -41,7 +41,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         average_rating=Coalesce(Avg("reviews__rating"), Value(0.0)),
         reviews_count=Count("reviews", distinct=True),
         total_stock=Coalesce(Sum("variants__stock"), Value(0)),
-    )
+    ).order_by('-id')
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "slug", "description"]
