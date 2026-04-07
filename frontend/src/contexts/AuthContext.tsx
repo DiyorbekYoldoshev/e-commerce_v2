@@ -40,11 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchUser]);
 
   const login = async (email: string, password: string) => {
-    // Get JWT tokens
-    const tokenRes = await authApi.getToken({ email, password });
-    localStorage.setItem("access_token", tokenRes.data.access);
-    localStorage.setItem("refresh_token", tokenRes.data.refresh);
-    await fetchUser();
+    const res = await authApi.login({ email, password });
+
+    localStorage.setItem("access_token", res.data.access);
+    localStorage.setItem("refresh_token", res.data.refresh);
+
+    setUser(res.data.user);
   };
 
   const logout = () => {

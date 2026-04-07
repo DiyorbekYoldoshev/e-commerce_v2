@@ -11,29 +11,72 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, ShoppingBag, CheckCircle, Banknote, CalendarClock } from "lucide-react";
+import {
+  ArrowLeft, ShoppingBag, CheckCircle, Banknote,
+  CalendarClock, CreditCard, Loader2, Lock,
+} from "lucide-react";
+
+// Stripe
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
+
+// ─── Stripe init ──────────────────────────────────────────────────────────────
+// .env da VITE_STRIPE_PUBLISHABLE_KEY bo'lishi kerak
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
 const INSTALLMENT_MONTHS = [3, 6, 12];
 
-const Checkout: React.FC = () => {
+// ─── CardElement styles ───────────────────────────────────────────────────────
+const CARD_ELEMENT_OPTIONS = {
+  style: {
+    base: {
+      fontSize: "15px",
+      color: "hsl(var(--foreground))",
+      fontFamily: "inherit",
+      "::placeholder": { color: "hsl(var(--muted-foreground))" },
+    },
+    invalid: { color: "hsl(var(--destructive))" },
+  },
+  hidePostalCode: true,
+};
+
+// ─── Step types ───────────────────────────────────────────────────────────────
+type Step = "form" | "stripe" | "success";
+
+// ─── Inner form (has access to Stripe hooks) ──────────────────────────────────
+const CheckoutForm: React.FC = () => {
   const { items, totalAmount, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const stripe = useStripe();
+  const elements = useElements();
 
-  const [phone, setPhone] = useState("");
+  // Step state
+  const [step, setStep] = useState<Step>("form");
+
+  // Form fields
+  const [phone, setPhone]   = useState("");
   const [address, setAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "installment">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "stripe" | "installment">("stripe");
   const [installmentMonths, setInstallmentMonths] = useState(3);
+
+  // After order created
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+  const [clientSecret, setClientSecret]     = useState<string>("");
+
   const [submitting, setSubmitting] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [stripeLoading, setStripeLoading]   = useState(false);
+  const [stripeError, setStripeError]       = useState<string>("");
 
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
+  if (!user) { navigate("/login"); return null; }
 
-  if (items.length === 0 && !orderSuccess) {
+  if (items.length === 0 && step !== "success") {
     return (
       <div className="text-center py-20">
         <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -43,16 +86,17 @@ const Checkout: React.FC = () => {
     );
   }
 
-  if (orderSuccess) {
+  if (step === "success") {
     return (
       <div className="text-center py-20 max-w-md mx-auto px-4">
-        <CheckCircle className="h-20 w-20 text-primary mx-auto mb-4" />
+        <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">Buyurtma qabul qilindi!</h1>
         <p className="text-muted-foreground mb-6">
-          {paymentMethod === "installment"
-            ? `${installmentMonths} oyga bo'lib to'lash rejasi yaratildi. Buyurtmalarim bo'limidan to'lovlarni kuzating.`
-            : "Yetkazib berilganda naqd pul bilan to'laysiz."
-          }
+          {paymentMethod === "stripe"
+            ? "To'lov muvaffaqiyatli amalga oshirildi."
+            : paymentMethod === "installment"
+            ? `${installmentMonths} oyga bo'lib to'lash rejasi yaratildi.`
+            : "Yetkazib berilganda naqd pul bilan to'laysiz."}
         </p>
         <div className="flex gap-3 justify-center flex-wrap">
           <Button asChild><Link to="/my-orders">Buyurtmalarim</Link></Button>
@@ -66,7 +110,8 @@ const Checkout: React.FC = () => {
     ? Math.ceil((totalAmount / installmentMonths) * 100) / 100
     : 0;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ── Step 1: Create order ───────────────────────────────────────────────────
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone || !address) {
       toast({ title: "Telefon va manzilni kiriting", variant: "destructive" });
@@ -74,18 +119,27 @@ const Checkout: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      await orderApi.create({
+      const res = await orderApi.create({
         phone,
         address,
         is_installment: paymentMethod === "installment",
         installment_months: paymentMethod === "installment" ? installmentMonths : undefined,
-        items: items.map(i => ({
-          variant: i.variant.id,
-          quantity: i.quantity,
-        })),
+        items: items.map(i => ({ variant: i.variant.id, quantity: i.quantity })),
       });
-      clearCart();
-      setOrderSuccess(true);
+
+      const orderId = res.data?.id;
+      setCreatedOrderId(orderId);
+
+      if (paymentMethod === "cash") {
+        // Naqd — tugadi
+        clearCart();
+        setStep("success");
+      } else if (paymentMethod === "stripe" || paymentMethod === "installment") {
+        // Stripe uchun intent yaratish
+        const intentRes = await billingApi.createIntent({ order_id: orderId });
+        setClientSecret(intentRes.data.client_secret);
+        setStep("stripe");
+      }
     } catch (err: any) {
       toast({
         title: "Xatolik",
@@ -96,27 +150,65 @@ const Checkout: React.FC = () => {
     setSubmitting(false);
   };
 
-  return (
-    <div className="max-w-3xl mx-auto px-2">
-      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4 gap-1">
-        <ArrowLeft className="h-4 w-4" /> Orqaga
-      </Button>
-      <h1 className="text-xl md:text-2xl font-bold mb-6">Buyurtma berish</h1>
+  // ── Step 2: Confirm stripe payment ────────────────────────────────────────
+  const handleStripePayment = async () => {
+    if (!stripe || !elements || !clientSecret) return;
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) return;
 
-      <form onSubmit={handleSubmit}>
+    setStripeLoading(true);
+    setStripeError("");
+
+    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          email: user.email,
+          phone: phone,
+        },
+      },
+    });
+
+    if (error) {
+      setStripeError(error.message || "To'lovda xatolik yuz berdi");
+      setStripeLoading(false);
+      return;
+    }
+
+    if (paymentIntent?.status === "succeeded") {
+      clearCart();
+      setStep("success");
+    }
+    setStripeLoading(false);
+  };
+
+  // ── Render: Step 1 — Order form ───────────────────────────────────────────
+  if (step === "form") {
+    return (
+      <form onSubmit={handleCreateOrder}>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div className="md:col-span-3 space-y-4">
-            {/* Delivery info */}
+
+            {/* Delivery */}
             <Card>
               <CardHeader><CardTitle className="text-base md:text-lg">Yetkazib berish</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Telefon raqam</Label>
-                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+998901234567" />
+                  <Input
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="+998901234567"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Manzil</Label>
-                  <Textarea value={address} onChange={e => setAddress(e.target.value)} placeholder="To'liq manzilni kiriting" rows={3} />
+                  <Textarea
+                    value={address}
+                    onChange={e => setAddress(e.target.value)}
+                    placeholder="To'liq manzilni kiriting"
+                    rows={3}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -124,43 +216,73 @@ const Checkout: React.FC = () => {
             {/* Payment method */}
             <Card>
               <CardHeader><CardTitle className="text-base md:text-lg">To'lov usuli</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "cash" | "installment")}>
-                  <div className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setPaymentMethod("cash")}>
-                    <RadioGroupItem value="cash" id="cash" className="mt-0.5" />
+              <CardContent className="space-y-3">
+                <RadioGroup
+                  value={paymentMethod}
+                  onValueChange={v => setPaymentMethod(v as typeof paymentMethod)}
+                >
+                  {/* Stripe */}
+                  <label
+                    htmlFor="stripe"
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      paymentMethod === "stripe" ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <RadioGroupItem value="stripe" id="stripe" className="mt-0.5" />
                     <div className="flex-1">
-                      <label htmlFor="cash" className="font-medium text-sm flex items-center gap-2 cursor-pointer">
+                      <span className="font-medium text-sm flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        Karta bilan to'lash (Stripe)
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Visa, Mastercard va boshqa kartalar
+                      </p>
+                    </div>
+                  </label>
+
+                  {/* Cash */}
+                  <label
+                    htmlFor="cash"
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      paymentMethod === "cash" ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <RadioGroupItem value="cash" id="cash" className="mt-0.5" />
+                    <div>
+                      <span className="font-medium text-sm flex items-center gap-2">
                         <Banknote className="h-4 w-4 text-green-600" />
                         Naqd to'lov
-                      </label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Yetkazib berilganda naqd pul bilan to'laysiz
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Yetkazib berilganda to'laysiz
                       </p>
                     </div>
-                  </div>
+                  </label>
 
-                  <div className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => setPaymentMethod("installment")}>
+                  {/* Installment */}
+                  <label
+                    htmlFor="installment"
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      paymentMethod === "installment" ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
                     <RadioGroupItem value="installment" id="installment" className="mt-0.5" />
                     <div className="flex-1">
-                      <label htmlFor="installment" className="font-medium text-sm flex items-center gap-2 cursor-pointer">
-                        <CalendarClock className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm flex items-center gap-2">
+                        <CalendarClock className="h-4 w-4 text-purple-600" />
                         Bo'lib to'lash (nasiya)
-                      </label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Oyma-oy bo'lib to'lang
-                      </p>
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-0.5">Oyma-oy to'lang</p>
                     </div>
-                  </div>
+                  </label>
                 </RadioGroup>
 
-                {/* Installment months selection */}
+                {/* Installment months */}
                 {paymentMethod === "installment" && (
-                  <div className="space-y-3 pt-2">
+                  <div className="space-y-3 pt-1 pl-1">
                     <Label className="text-sm">Muddat tanlang</Label>
                     <div className="grid grid-cols-3 gap-2">
-                      {INSTALLMENT_MONTHS.map((m) => (
+                      {INSTALLMENT_MONTHS.map(m => (
                         <button
                           key={m}
                           type="button"
@@ -176,19 +298,17 @@ const Checkout: React.FC = () => {
                         </button>
                       ))}
                     </div>
-
-                    {/* Installment preview */}
-                    <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Jami summa:</span>
+                    <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Jami:</span>
                         <span className="font-mono">{totalAmount.toLocaleString()} so'm</span>
                       </div>
-                      <div className="flex justify-between text-sm">
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Muddat:</span>
                         <span>{installmentMonths} oy</span>
                       </div>
                       <Separator />
-                      <div className="flex justify-between text-sm font-bold">
+                      <div className="flex justify-between font-bold">
                         <span>Oylik to'lov:</span>
                         <span className="text-primary">{monthlyAmount.toLocaleString()} so'm</span>
                       </div>
@@ -208,7 +328,7 @@ const Checkout: React.FC = () => {
                   {items.map(i => (
                     <div key={i.variant.id} className="flex justify-between gap-2">
                       <span className="text-muted-foreground truncate">
-                        {i.product.name} x{i.quantity}
+                        {i.product.name} × {i.quantity}
                       </span>
                       <span className="whitespace-nowrap font-mono text-xs">
                         {(Number(i.variant.price) * i.quantity).toLocaleString()}
@@ -221,19 +341,100 @@ const Checkout: React.FC = () => {
                   <span>Jami:</span>
                   <span className="text-primary">{totalAmount.toLocaleString()} so'm</span>
                 </div>
-                {paymentMethod === "installment" && (
-                  <div className="text-xs text-muted-foreground text-center bg-muted/50 rounded p-2">
-                    {installmentMonths} oyga × {monthlyAmount.toLocaleString()} so'm
-                  </div>
-                )}
                 <Button type="submit" className="w-full" size="lg" disabled={submitting}>
-                  {submitting ? "Yuborilmoqda..." : "Buyurtma berish"}
+                  {submitting ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Yuklanmoqda...</>
+                  ) : paymentMethod === "cash" ? (
+                    "Buyurtma berish"
+                  ) : (
+                    "Davom etish →"
+                  )}
                 </Button>
               </CardContent>
             </Card>
           </div>
         </div>
       </form>
+    );
+  }
+
+  // ── Render: Step 2 — Stripe card input ───────────────────────────────────
+  return (
+    <div className="max-w-md mx-auto space-y-4">
+      <Button variant="ghost" size="sm" onClick={() => setStep("form")} className="gap-1 mb-2">
+        <ArrowLeft className="h-4 w-4" /> Orqaga
+      </Button>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lock className="h-4 w-4 text-green-600" />
+            Karta ma'lumotlarini kiriting
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Amount */}
+          <div className="bg-muted/50 rounded-lg p-3 flex justify-between text-sm font-medium">
+            <span>To'lov summasi:</span>
+            <span className="text-primary font-bold">{totalAmount.toLocaleString()} so'm</span>
+          </div>
+
+          {/* Stripe CardElement */}
+          <div className="border rounded-md p-3 bg-background focus-within:ring-2 focus-within:ring-ring transition-all">
+            <CardElement options={CARD_ELEMENT_OPTIONS} />
+          </div>
+
+          {/* Test card hint */}
+          <p className="text-xs text-muted-foreground">
+            Test karta: <span className="font-mono">4242 4242 4242 4242</span> ·
+            Muddati: <span className="font-mono">12/34</span> ·
+            CVC: <span className="font-mono">123</span>
+          </p>
+
+          {/* Error */}
+          {stripeError && (
+            <div className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">
+              {stripeError}
+            </div>
+          )}
+
+          <Button
+            onClick={handleStripePayment}
+            disabled={stripeLoading || !stripe}
+            className="w-full"
+            size="lg"
+          >
+            {stripeLoading ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> To'lanmoqda...</>
+            ) : (
+              <><Lock className="h-4 w-4 mr-2" /> To'lash</>
+            )}
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1">
+            <Lock className="h-3 w-3" />
+            To'lov Stripe orqali xavfsiz amalga oshiriladi
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// ─── Wrapper with Elements provider ──────────────────────────────────────────
+const Checkout: React.FC = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="max-w-3xl mx-auto px-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4 gap-1">
+        <ArrowLeft className="h-4 w-4" /> Orqaga
+      </Button>
+      <h1 className="text-xl md:text-2xl font-bold mb-6">Buyurtma berish</h1>
+
+      <Elements stripe={stripePromise}>
+        <CheckoutForm />
+      </Elements>
     </div>
   );
 };
