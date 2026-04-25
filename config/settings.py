@@ -32,7 +32,7 @@ STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 DEBUG = True
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = ["172.30.44.111", "127.0.0.1","localhost"]
+ALLOWED_HOSTS = ["10.186.131.41", "127.0.0.1","localhost"]
 
 # Application definition
 
@@ -182,7 +182,7 @@ SWAGGER_SETTINGS = {
     "SECURITY_REQUIREMENTS":[{"Bearer":[]}]
 }
 CORS_ALLOWED_ORIGINS = [
-    "http://172.30.44.111:8080",
+    "http://10.186.131.41:8080",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
 ]

@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.permissions import IsAdmin
 from seller_modul.models import Seller
@@ -68,8 +69,14 @@ class UserViewSet(GenericViewSet):
 
         user = authenticate_user(**serializer.validated_data)
 
+        refresh = RefreshToken.for_user(user)
+
         return Response(
-            {"user": UserSerializer(user, context={"request": request}).data},
+            {
+                "user": UserSerializer(user, context={"request": request}).data,
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
             status=status.HTTP_200_OK
         )
 

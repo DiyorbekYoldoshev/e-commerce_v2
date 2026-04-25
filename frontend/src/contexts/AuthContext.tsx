@@ -9,6 +9,7 @@ interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isSeller: boolean;
+  refetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,10 +43,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const res = await authApi.login({ email, password });
 
-    localStorage.setItem("access_token", res.data.access);
-    localStorage.setItem("refresh_token", res.data.refresh);
+    console.log("Login response:", res.data); // debug uchun
 
-    setUser(res.data.user);
+    const access  = res.data.access;
+    const refresh = res.data.refresh;
+    const userData = res.data.user;
+
+    if (!access) {
+      throw new Error("Server token qaytarmadi. Backend login view ni tekshiring.");
+    }
+
+    localStorage.setItem("access_token", access);
+    localStorage.setItem("refresh_token", refresh ?? "");
+
+    // Agar user ma'lumotlari response da kelgan bo'lsa ishlatamiz
+    // Aks holda /me/ dan yuklaymiz
+    if (userData) {
+      setUser(userData);
+    } else {
+      await fetchUser();
+    }
   };
 
   const logout = () => {
@@ -61,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         logout,
+        refetchUser: fetchUser,
         isAdmin: !!(user?.is_staff && user?.is_superuser),
         isSeller: !!user?.is_seller,
       }}
