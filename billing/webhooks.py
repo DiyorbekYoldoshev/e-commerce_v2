@@ -34,7 +34,7 @@ def stripe_webhook(request):
         event = stripe.Webhook.construct_event(
             payload,
             sig_header,
-            settings.STRIPE_WEBHOOK_SECRET
+            settings.STRIPE_WEBHOOK_SECRET  # settings.py ga qo'shish kerak
         )
     except ValueError:
         logger.error("Stripe webhook: payload noto'g'ri")
@@ -89,9 +89,11 @@ def _handle_payment_succeeded(intent):
     )
 
     if not created:
+        # Allaqachon mavjud — duplicate webhook, skip
         logger.info(f"Duplicate webhook for intent {intent['id']}, skipping")
         return
 
+    # FIX #5: installment_id faqat metadata'da mavjud bo'lganda
     if installment_id:
         try:
             installment = InstallmentPayment.objects.get(id=installment_id)

@@ -33,8 +33,10 @@ class CreatePaymentIntent(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # FIX #3: 404 qaytaradi, 500 emas
         order = get_object_or_404(Order, id=order_id)
 
+        # FIX #2: Faqat o'z buyurtmasiga to'lov yarata oladi
         if order.user != request.user:
             return Response(
                 {"error": "Bu buyurtma sizga tegishli emas"},

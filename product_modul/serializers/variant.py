@@ -12,7 +12,7 @@ class VariantAttributeValueSerializer(serializers.ModelSerializer):
 
 class ProductVariantSerializer(serializers.ModelSerializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), required=False)
-    attributes = VariantAttributeValueSerializer(many=True, required=False)
+    attributes = VariantAttributeValueSerializer(many=True, required=False, source="attribute_values")
 
     class Meta:
         model = ProductVariant

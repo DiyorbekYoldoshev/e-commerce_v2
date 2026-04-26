@@ -31,24 +31,32 @@ const ProductDetail: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [wishlisted, setWishlisted] = useState(false);
 
-  // Review form
   const [reviewRating, setReviewRating] = useState("5");
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  useEffect(() => {
+  const loadProduct = async () => {
     if (!id) return;
     setLoading(true);
-    productApi.detail(Number(id)).then(res => {
+    try {
+      const res = await productApi.detail(Number(id));
       const p = res.data;
       setProduct(p);
       setWishlisted(!!p.is_wishlisted);
-      if (p.variants?.length) setSelectedVariant(p.variants[0]);
-    }).catch(() => navigate("/products")).finally(() => setLoading(false));
-  }, [id]);
+      // Birinchi stock bor variantni tanlash
+      const firstAvailable = p.variants?.find((v: ProductVariant) => v.stock > 0) ?? p.variants?.[0] ?? null;
+      setSelectedVariant(firstAvailable);
+    } catch {
+      navigate("/products");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadProduct(); }, [id]);
 
   const handleAddToCart = () => {
-    if (!product || !selectedVariant) {
+    if (!product) return;
+    if (product.variants?.length > 0 && !selectedVariant) {
       toast({ title: "Variant tanlang", variant: "destructive" });
       return;
     }
@@ -83,9 +91,7 @@ const ProductDetail: React.FC = () => {
       });
       toast({ title: "Bahoingiz qabul qilindi ✓" });
       setReviewComment("");
-      // Reload product
-      const res = await productApi.detail(product.id);
-      setProduct(res.data);
+      loadProduct();
     } catch (err: any) {
       toast({
         title: "Xatolik",
@@ -115,7 +121,8 @@ const ProductDetail: React.FC = () => {
   if (!product) return null;
 
   const currentPrice = selectedVariant ? selectedVariant.price : product.base_price;
-  const currentStock = selectedVariant ? selectedVariant.stock : product.total_stock;
+  const currentStock = selectedVariant ? selectedVariant.stock : (product.total_stock ?? 0);
+  const hasVariants = product.variants && product.variants.length > 0;
 
   return (
     <div className="space-y-8">
@@ -151,17 +158,20 @@ const ProductDetail: React.FC = () => {
             )}
           </div>
 
+          {/* Rating */}
           <div className="flex items-center gap-2">
             <div className="flex">
               {[1, 2, 3, 4, 5].map(s => (
                 <Star
                   key={s}
-                  className={`h-4 w-4 ${s <= Math.round(product.average_rating) ? "fill-warning text-warning" : "text-muted"}`}
+                  className={`h-4 w-4 ${s <= Math.round(product.average_rating ?? 0)
+                    ? "fill-yellow-400 text-yellow-400"
+                    : "text-muted-foreground"}`}
                 />
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
-              {product.average_rating?.toFixed(1)} ({product.reviews_count} ta sharh)
+              {(product.average_rating ?? 0).toFixed(1)} ({product.reviews_count ?? 0} ta sharh)
             </span>
           </div>
 
@@ -172,48 +182,72 @@ const ProductDetail: React.FC = () => {
           <p className="text-muted-foreground text-sm leading-relaxed">{product.description}</p>
 
           {/* Variants */}
-          {product.variants && product.variants.length > 0 && (
+          {hasVariants && (
             <div className="space-y-3">
               <Label className="text-sm font-semibold">Variant tanlang</Label>
               <div className="flex flex-wrap gap-2">
-                {product.variants.map(v => (
-                  <Button
-                    key={v.id}
-                    variant={selectedVariant?.id === v.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => { setSelectedVariant(v); setQuantity(1); }}
-                    disabled={v.stock === 0}
-                  >
-                    {v.sku}
-                    {v.attributes?.map(a => ` - ${a.value}`).join("")}
-                    {v.stock === 0 && " (tugagan)"}
-                  </Button>
-                ))}
+                {product.variants.map((v: ProductVariant) => {
+                  const isSelected = selectedVariant?.id === v.id;
+                  const outOfStock = v.stock === 0;
+
+                  // Atributlardan label yasash (rang, o'lcham va h.k.)
+                  const attrLabel = v.attributes && v.attributes.length > 0
+                    ? v.attributes.map((a: any) => `${a.attribute_name}: ${a.value}`).join(", ")
+                    : v.sku;
+
+                  return (
+                    <Button
+                      key={v.id}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => { setSelectedVariant(v); setQuantity(1); }}
+                      disabled={outOfStock}
+                      className="flex flex-col items-start h-auto py-2 px-3 text-left"
+                    >
+                      <span className="font-mono text-xs opacity-60">{v.sku}</span>
+                      <span className="text-sm">{attrLabel}</span>
+                      <span className={`text-xs mt-0.5 ${outOfStock ? "text-destructive" : "opacity-70"}`}>
+                        {outOfStock
+                          ? "Tugagan"
+                          : `${Number(v.price).toLocaleString()} so'm · ${v.stock} dona`}
+                      </span>
+                    </Button>
+                  );
+                })}
               </div>
+
+              {/* Tanlangan variant atributlari */}
               {selectedVariant?.attributes && selectedVariant.attributes.length > 0 && (
-                <div className="flex gap-3 flex-wrap">
-                  {selectedVariant.attributes.map(a => (
-                    <Badge key={a.id} variant="outline">{a.attribute_name}: {a.value}</Badge>
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {selectedVariant.attributes.map((a: any) => (
+                    <Badge key={a.id} variant="outline">
+                      {a.attribute_name}: {a.value}
+                    </Badge>
                   ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* Quantity & Actions */}
+          {/* Quantity & stock */}
           <div className="flex items-center gap-4">
             <div className="flex items-center border rounded-md">
               <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
                 <Minus className="h-4 w-4" />
               </Button>
               <span className="w-12 text-center font-medium">{quantity}</span>
-              <Button variant="ghost" size="icon" onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setQuantity(Math.min(currentStock, quantity + 1))}
+                disabled={quantity >= currentStock}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <span className="text-sm text-muted-foreground">
-              <Package className="inline h-4 w-4 mr-1" />
-              {currentStock} dona mavjud
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
+              <Package className="h-4 w-4" />
+              {currentStock > 0 ? `${currentStock} dona mavjud` : "Stokda yo'q"}
             </span>
           </div>
 
@@ -248,9 +282,8 @@ const ProductDetail: React.FC = () => {
 
       {/* Reviews */}
       <section className="space-y-6">
-        <h2 className="text-xl font-bold">Sharhlar ({product.reviews_count})</h2>
+        <h2 className="text-xl font-bold">Sharhlar ({product.reviews_count ?? 0})</h2>
 
-        {/* Add review */}
         {user && (
           <Card>
             <CardContent className="p-4 space-y-3">
@@ -281,10 +314,9 @@ const ProductDetail: React.FC = () => {
           </Card>
         )}
 
-        {/* Reviews list */}
         {product.reviews && product.reviews.length > 0 ? (
           <div className="space-y-3">
-            {product.reviews.map(r => (
+            {product.reviews.map((r: any) => (
               <Card key={r.id}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -294,7 +326,9 @@ const ProductDetail: React.FC = () => {
                         {[1, 2, 3, 4, 5].map(s => (
                           <Star
                             key={s}
-                            className={`h-3 w-3 ${s <= r.rating ? "fill-warning text-warning" : "text-muted"}`}
+                            className={`h-3 w-3 ${s <= r.rating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground"}`}
                           />
                         ))}
                       </div>

@@ -9,7 +9,6 @@ interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isSeller: boolean;
-  refetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,28 +40,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [fetchUser]);
 
   const login = async (email: string, password: string) => {
-    const res = await authApi.login({ email, password });
-
-    console.log("Login response:", res.data); // debug uchun
-
-    const access  = res.data.access;
-    const refresh = res.data.refresh;
-    const userData = res.data.user;
-
-    if (!access) {
-      throw new Error("Server token qaytarmadi. Backend login view ni tekshiring.");
-    }
-
-    localStorage.setItem("access_token", access);
-    localStorage.setItem("refresh_token", refresh ?? "");
-
-    // Agar user ma'lumotlari response da kelgan bo'lsa ishlatamiz
-    // Aks holda /me/ dan yuklaymiz
-    if (userData) {
-      setUser(userData);
-    } else {
-      await fetchUser();
-    }
+    // Get JWT tokens
+    const tokenRes = await authApi.getToken({ email, password });
+    localStorage.setItem("access_token", tokenRes.data.access);
+    localStorage.setItem("refresh_token", tokenRes.data.refresh);
+    await fetchUser();
   };
 
   const logout = () => {
@@ -78,7 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         logout,
-        refetchUser: fetchUser,
         isAdmin: !!(user?.is_staff && user?.is_superuser),
         isSeller: !!user?.is_seller,
       }}
