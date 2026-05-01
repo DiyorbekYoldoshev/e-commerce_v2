@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Star, Trash2 } from "lucide-react";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://10.186.131.41:8000";
 
 const Wishlist: React.FC = () => {
   const { user } = useAuth();
@@ -25,15 +25,27 @@ const Wishlist: React.FC = () => {
   const loadWishlist = async () => {
     setLoading(true);
     try {
-      // Backend returns all products; we filter wishlisted on detail
-      // Alternative: use a dedicated wishlist endpoint if available
-      const res = await productApi.list();
-      const all: Product[] = res.data?.results || res.data || [];
-      // We'll load each to check is_wishlisted – but this is expensive.
-      // Better approach: backend provides a wishlist list endpoint
-      // For now show all products marked as wishlisted from list
-      setProducts(all.filter(p => p.is_wishlisted));
-    } catch {}
+      const res = await productApi.wishlist();
+      // Backend: [{id, product_id, name, price, image}, ...]
+      const wishlistItems = res.data || [];
+      const productList: Product[] = wishlistItems.map((item: any) => ({
+        id: item.product_id,
+        name: item.name,
+        base_price: item.price,
+        image: item.image,
+        average_rating: 0,
+        reviews_count: 0,
+        total_stock: 0,
+        category: 0,
+        category_name: "",
+        seller: 0,
+        seller_name: "",
+        is_wishlisted: true,
+      }));
+      setProducts(productList);
+    } catch {
+      setProducts([]);
+    }
     setLoading(false);
   };
 
@@ -90,10 +102,6 @@ const Wishlist: React.FC = () => {
                   </div>
                   <div className="p-3">
                     <h3 className="font-medium text-sm line-clamp-2 mb-1">{p.name}</h3>
-                    <div className="flex items-center gap-1 mb-1">
-                      <Star className="h-3 w-3 fill-warning text-warning" />
-                      <span className="text-xs text-muted-foreground">{p.average_rating?.toFixed(1)}</span>
-                    </div>
                     <p className="font-bold text-primary">{Number(p.base_price).toLocaleString()} so'm</p>
                   </div>
                 </Link>

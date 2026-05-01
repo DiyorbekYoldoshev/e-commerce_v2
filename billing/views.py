@@ -1,4 +1,5 @@
 import stripe
+from decimal import Decimal, ROUND_HALF_UP
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 
@@ -72,10 +73,36 @@ class CreatePaymentIntent(APIView):
         if installment_id:
             metadata["installment_id"] = str(installment_id)
 
+        # Currency handling: support charging in settings.STRIPE_CURRENCY (default usd).
+        # If users pay in UZS (so'm) and Stripe doesn't support UZS, convert using
+        # STRIPE_UZS_TO_USD_RATE from settings (set in .env). Frontend may send
+        # a `currency` field indicating the user's local currency.
+        requested_currency = (request.data.get("currency") or "uzs").lower()
+        stripe_currency = getattr(settings, "STRIPE_CURRENCY", "usd").lower()
+
+        # Determine amount to send to Stripe (in smallest unit).
+        if requested_currency == stripe_currency:
+            # same currency: multiply to minor units
+            stripe_amount = int(Decimal(amount) * Decimal(100))
+        elif requested_currency == "uzs" and stripe_currency == "usd":
+            rate = getattr(settings, "STRIPE_UZS_TO_USD_RATE", None)
+            if not rate:
+                return Response(
+                    {"error": "STRIPE_UZS_TO_USD_RATE not configured on server"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            # Convert UZS -> USD then to cents. Use Decimal for safe rounding.
+            usd = (Decimal(amount) * Decimal(str(rate))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            stripe_amount = int((usd * Decimal(100)).to_integral_value(rounding=ROUND_HALF_UP))
+        else:
+            # Fallback: attempt to charge using stripe_currency assuming provided amount
+            # is in that currency (risky). Prefer converting on client or supplying rate.
+            stripe_amount = int(Decimal(amount) * Decimal(100))
+
         try:
             intent = stripe.PaymentIntent.create(
-                amount=int(amount * 100),
-                currency=getattr(settings, "STRIPE_CURRENCY", "usd"),
+                amount=stripe_amount,
+                currency=stripe_currency,
                 metadata=metadata,
                 description=f"Order #{order.id}" + (
                     f" - Installment #{installment_id}" if installment_id else ""

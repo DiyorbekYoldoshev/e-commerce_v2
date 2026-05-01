@@ -3,6 +3,53 @@ from django.db import transaction
 
 from order_modul.models import InstallmentPlan, InstallmentPayment
 
+import stripe
+from django.conf import settings
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+# UZS → USD kursi (1 USD ≈ 12,500 UZS)
+UZS_TO_USD_RATE = Decimal("12500")
+
+
+def create_payment_intent(order_id, installment_id=None):
+    """
+    Stripe PaymentIntent yaratish (USD da).
+    """
+    from order_modul.models import Order, InstallmentPayment
+
+    order = Order.objects.get(id=order_id)
+
+    if installment_id:
+        # Bo'lib to'lash — bitta oylik to'lov
+        payment = InstallmentPayment.objects.get(id=installment_id)
+        amount_uzs = payment.amount
+        description = f"Nasiya to'lov — Oy {payment.month}"
+    else:
+        # To'liq to'lov
+        amount_uzs = order.payable_amount
+        description = f"Buyurtma #{order.id}"
+
+    # UZS → USD konvertatsiya
+    amount_usd = Decimal(str(amount_uzs)) / UZS_TO_USD_RATE
+    # Stripe cents da ishlaydi (1 USD = 100 cents)
+    amount_cents = int(amount_usd * 100)
+
+    intent = stripe.PaymentIntent.create(
+        amount=amount_cents,
+        currency="usd",
+        description=description,
+        metadata={
+            "order_id": order.id,
+            "installment_id": installment_id or "",
+        },
+    )
+
+    return {
+        "client_secret": intent.client_secret,
+        "amount_uzs": str(amount_uzs),
+        "amount_usd": str(amount_usd),
+    }
 
 def create_installments(order, months):
     """

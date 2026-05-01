@@ -17,12 +17,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @csrf_exempt
 @require_POST
 def stripe_webhook(request):
-    """
-    Stripe webhook endpoint.
-    FIX #1: Stripe signature tekshiruvi bilan xavfsiz.
-    FIX #9: Duplicate to'lovlarni oldini oladi (get_or_create).
-    FIX #12: failed va canceled eventlarni ham handle qiladi.
-    """
+
     payload = request.body
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
@@ -34,7 +29,7 @@ def stripe_webhook(request):
         event = stripe.Webhook.construct_event(
             payload,
             sig_header,
-            settings.STRIPE_WEBHOOK_SECRET  # settings.py ga qo'shish kerak
+            settings.STRIPE_WEBHOOK_SECRET
         )
     except ValueError:
         logger.error("Stripe webhook: payload noto'g'ri")
