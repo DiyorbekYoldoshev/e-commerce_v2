@@ -15,7 +15,7 @@ class Payment(models.Model):
     order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name="payments"
+        related_name="payments",
     )
 
     stripe_payment_intent = models.CharField(
@@ -24,14 +24,17 @@ class Payment(models.Model):
         db_index=True,
     )
 
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
 
-    currency = models.CharField(max_length=10, default="usd")
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+
+    currency = models.CharField(max_length=10, default="uzs")
+    stripe_currency = models.CharField(max_length=10, default="usd")
+    stripe_amount_cents = models.BigIntegerField(default=0)
 
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="pending"
+        default="pending",
     )
 
     installment_payment = models.ForeignKey(
@@ -40,7 +43,7 @@ class Payment(models.Model):
         null=True,
         blank=True,
         related_name="stripe_payments",
-        help_text="Agar bo'lib to'lash bo'lsa, qaysi oylik to'lovga tegishli"
+        help_text="Agar bo'lib to'lash bo'lsa, qaysi oylik to'lovga tegishli",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -49,5 +52,6 @@ class Payment(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+
     def __str__(self):
-        return f"Payment {self.id} - Order {self.order.id} - {self.status}"
+        return f"Payment {self.id} - Order {self.order_id} - {self.status}"

@@ -57,6 +57,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         return ProductDetailSerializer
 
     def get_permissions(self):
+
         if self.action in ("list", "retrieve"):
             return [AllowAny()]
 
@@ -74,6 +75,8 @@ class ProductViewSet(viewsets.ModelViewSet):
             reviews_count=Count("reviews", distinct=True),
             total_stock=Coalesce(Sum("variants__stock"), Value(0)),
         )
+        if getattr(self, 'swagger_fake_view', False):
+            return qs.none()
 
         if self.action in (
                 "list",

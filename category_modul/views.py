@@ -36,6 +36,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
         qs = Category.objects.all().select_related("parent")
 
+        if getattr(self, 'swagger_fake_view', False):
+            return qs.none()
+
         if self.action in ("list", "retrieve", "subcategories", "ancestors", "list_attributes"):
             qs = qs.prefetch_related("children", "attribute")  # model related_name="attribute"
 
