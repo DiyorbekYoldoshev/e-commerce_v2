@@ -19,7 +19,6 @@ from .serializers import (
 )
 
 
-# --------- Yordamchi ---------
 def get_or_create_wallet(user) -> Wallet:
     wallet, _ = Wallet.objects.get_or_create(user=user)
     return wallet
@@ -55,7 +54,10 @@ class BalanceView(APIView):
 
 
 class TopUpBalanceView(APIView):
-    """Karta orqali wallet'ni to'ldirish (simulyatsiya)."""
+    """
+    Karta orqali ham karta balansini, ham wallet'ni to'ldirish (simulyatsiya).
+    Karta balansiga qo'shiladi — to'lov karta balansidan yechiladi.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -67,6 +69,12 @@ class TopUpBalanceView(APIView):
         )
 
         with transaction.atomic():
+            # Karta balansini to'ldirish
+            card_locked = Card.objects.select_for_update().get(pk=card.id)
+            card_locked.balance = (card_locked.balance or Decimal("0")) + amount
+            card_locked.save(update_fields=["balance"])
+
+            # Wallet balansini ham sinxron ushlab turish (ixtiyoriy)
             wallet = Wallet.objects.select_for_update().get_or_create(
                 user=request.user
             )[0]
@@ -76,8 +84,9 @@ class TopUpBalanceView(APIView):
         return Response({
             "status": "success",
             "message": f"{amount} so'm balansga qo'shildi",
-            "balance": str(wallet.balance),
-            "card": card.masked_number,
+            "card_balance": str(card_locked.balance),
+            "wallet_balance": str(wallet.balance),
+            "card": card_locked.masked_number,
         })
 
 
@@ -86,10 +95,10 @@ class ProcessPaymentView(APIView):
     """
     Buyurtma yoki nasiya oyligi uchun to'lov.
     Mantiq:
-      - Naqd buyurtmaga online to'lov mumkin emas (xatolik).
+      - is_cash=True buyurtmaga online to'lov mumkin emas.
       - Nasiya bo'lsa, faqat ma'lum oylik (installment_id) to'lanadi.
-      - Naqd-bo'lmagan to'liq to'lovlar uchun 1 marta to'lash mumkin.
-      - Karta yoki Wallet balansidan yechiladi.
+      - To'liq to'lovlar uchun 1 marta to'lash mumkin.
+      - Avval karta balansidan, yetmasa wallet balansidan yechiladi.
     """
     permission_classes = [IsAuthenticated]
 
@@ -101,6 +110,13 @@ class ProcessPaymentView(APIView):
         order = get_object_or_404(Order, id=data["order_id"], user=request.user)
         card = get_object_or_404(Card, id=data["card_id"], user=request.user)
         installment_id = data.get("installment_id")
+
+        # Naqd buyurtmaga online to'lov yo'q
+        if order.is_cash:
+            return Response(
+                {"error": "Naqd buyurtma uchun online to'lov mavjud emas. Admin tasdiqlaydi."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         installment = None
         if installment_id:
@@ -115,16 +131,10 @@ class ProcessPaymentView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
-            # To'liq to'lov — agar nasiya rejasi mavjud bo'lsa, uni rad qilamiz
-            if hasattr(order, "installment_plan") and order.installment_plan:
+            # To'liq to'lov — nasiya bo'lsa rad qilamiz
+            if hasattr(order, "installment") and order.installment:
                 return Response(
                     {"error": "Bu nasiya buyurtma — har oylikni alohida to'lang"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            # Naqd buyurtmaga online to'lov yo'q
-            if getattr(order, "is_cash", False):
-                return Response(
-                    {"error": "Naqd buyurtma uchun online to'lov mavjud emas"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if order.payment_status == "paid":
@@ -137,27 +147,39 @@ class ProcessPaymentView(APIView):
 
         try:
             with transaction.atomic():
-                # 1) Mablag'ni tekshirish va yechish (avval karta, keyin wallet)
                 source = None
                 card_locked = Card.objects.select_for_update().get(pk=card.id)
+                wallet = Wallet.objects.select_for_update().get_or_create(
+                    user=request.user
+                )[0]
+
+                # Avval karta balansidan, yetmasa wallet'dan
                 if card_locked.balance >= amount:
                     card_locked.balance -= amount
-                    card_locked.save()
+                    card_locked.save(update_fields=["balance"])
+                    # Wallet ham sinxronlash
+                    if wallet.balance >= amount:
+                        wallet.balance -= amount
+                        wallet.save()
                     source = "card"
-                else:
-                    wallet = Wallet.objects.select_for_update().get_or_create(
-                        user=request.user
-                    )[0]
-                    if wallet.balance < amount:
-                        return Response(
-                            {"error": "Mablag' yetarli emas. Kartani yoki balansni to'ldiring."},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
+                elif wallet.balance >= amount:
                     wallet.balance -= amount
                     wallet.save()
                     source = "wallet"
+                else:
+                    total_available = card_locked.balance + wallet.balance
+                    return Response(
+                        {
+                            "error": f"Mablag' yetarli emas. "
+                                     f"Karta: {card_locked.balance} so'm, "
+                                     f"Wallet: {wallet.balance} so'm, "
+                                     f"Kerak: {amount} so'm. "
+                                     f"Kartani to'ldiring."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-                # 2) Payment yozuvi
+                # Payment yozuvi
                 payment = Payment.objects.create(
                     order=order,
                     card=card_locked,
@@ -166,24 +188,20 @@ class ProcessPaymentView(APIView):
                     installment_payment=installment,
                 )
 
-                # 3) Statuslarni yangilash
+                # Statuslarni yangilash
                 if installment:
                     installment.is_paid = True
-                    if hasattr(installment, "paid_at"):
-                        from django.utils import timezone
-                        installment.paid_at = timezone.now()
-                    installment.save()
+                    from django.utils import timezone
+                    installment.paid_at = timezone.now()
+                    installment.save(update_fields=["is_paid", "paid_at"])
 
                     plan = installment.installment
-                    if not plan.payments.filter(is_paid=False).exists():
-                        order.payment_status = "paid"
-                        order.save()
-                    else:
-                        order.payment_status = "partial"
-                        order.save()
+                    all_paid = not plan.payments.filter(is_paid=False).exists()
+                    order.payment_status = "paid" if all_paid else "partial"
+                    order.save(update_fields=["payment_status"])
                 else:
                     order.payment_status = "paid"
-                    order.save()
+                    order.save(update_fields=["payment_status"])
 
             return Response({
                 "status": "success",

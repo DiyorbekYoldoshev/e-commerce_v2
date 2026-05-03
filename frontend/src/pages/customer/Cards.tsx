@@ -109,8 +109,9 @@ const Cards: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      await billingApi.topUp({ card_id: topupCardId, amount: amt });
-      toast({ title: "Balans to'ldirildi" });
+      const res = await billingApi.topUp({ card_id: topupCardId, amount: amt });
+      const newBalance = res.data?.card_balance || res.data?.wallet_balance || amt;
+      toast({ title: `Balans to'ldirildi! Yangi balans: ${Number(newBalance).toLocaleString()} so'm` });
       setTopupOpen(false);
       setTopupAmount("");
       loadAll();
@@ -222,7 +223,11 @@ const Cards: React.FC = () => {
                   <p className="font-mono tracking-widest text-base">
                     {c.masked_number || "**** **** **** ****"}
                   </p>
-                  <div className="flex justify-between items-end mt-4">
+                  <div className="mt-3 mb-1">
+                    <p className="text-[10px] uppercase opacity-60">Karta balansi</p>
+                    <p className="font-mono text-lg font-bold">{Number(c.balance).toLocaleString()} so'm</p>
+                  </div>
+                  <div className="flex justify-between items-end mt-2">
                     <div>
                       <p className="text-[10px] uppercase opacity-60">Amal qiladi</p>
                       <p className="font-mono text-sm">{c.expiration_date}</p>

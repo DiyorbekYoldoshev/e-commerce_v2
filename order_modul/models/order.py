@@ -131,23 +131,27 @@ class Order(BaseModel):
 
         return total,discount,payable
 
-    def update_payment_status_from_installments(self,save=True):
+    def update_payment_status_from_installments(self, save=True):
 
         if not self.is_installment:
             return
 
-        if not hasattr(self, "installment") or self.installment is None:
+        # installment — OneToOne field, count() emas, mavjudligini tekshirish kerak
+        try:
+            plan = self.installment
+        except Exception:
             return
 
-        total = self.installment.count()
-        paid = self.installment.payments.filter(is_paid=True).count()
+        if plan is None:
+            return
+
+        total = plan.payments.count()
+        paid = plan.payments.filter(is_paid=True).count()
 
         if paid == 0:
             self.payment_status = PaymentChoices.UNPAID
-
         elif paid < total:
             self.payment_status = PaymentChoices.PARTIAL
-
         else:
             self.payment_status = PaymentChoices.PAID
 
