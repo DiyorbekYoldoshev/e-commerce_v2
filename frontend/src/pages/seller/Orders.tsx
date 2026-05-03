@@ -250,24 +250,6 @@ const SellerOrders: React.FC = () => {
               )}
 
               {/* Status change */}
-              {NEXT_STATUSES[selected.status_choices]?.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Status o'zgartirish</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {NEXT_STATUSES[selected.status_choices].map(s => (
-                      <Button
-                        key={s.value}
-                        size="sm"
-                        variant={s.value === "cancelled" ? "destructive" : "default"}
-                        disabled={updating}
-                        onClick={() => handleSetStatus(selected.id, s.value)}
-                      >
-                        {updating ? "..." : s.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </DialogContent>

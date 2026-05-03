@@ -133,7 +133,6 @@ const SellerDashboard: React.FC = () => {
                   <Clock className="h-5 w-5 text-yellow-600" />
                   <div>
                     <p className="text-sm font-medium">Kutilayotgan buyurtmalar</p>
-                    <p className="text-xs text-muted-foreground">Tasdiqlash kerak</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

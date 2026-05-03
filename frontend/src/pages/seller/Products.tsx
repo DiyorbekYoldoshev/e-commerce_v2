@@ -217,14 +217,21 @@ const SellerProducts: React.FC = () => {
 
     setSavingVariant(true);
     try {
+      const priceNum = parseFloat(variantForm.price.replace(/[^0-9.]/g, ""));
+      if (isNaN(priceNum) || priceNum <= 0) {
+        toast({ title: "Narx to'g'ri kiritilmagan", variant: "destructive" });
+        setSavingVariant(false);
+        return;
+      }
+
       const data: any = {
         product: currentProduct.id,
-        sku: variantForm.sku,
-        price: variantForm.price,
+        sku: variantForm.sku.trim(),
+        price: priceNum.toFixed(2),
         stock: Number(variantForm.stock),
         attributes: variantForm.attributes
-          .filter(a => a.attribute && a.value)
-          .map(a => ({ attribute: Number(a.attribute), value: a.value })),
+          .filter(a => a.attribute && a.value.trim())
+          .map(a => ({ attribute: Number(a.attribute), value: a.value.trim() })),
       };
 
       if (editingVariant) {
