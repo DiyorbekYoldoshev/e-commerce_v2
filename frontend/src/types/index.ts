@@ -129,10 +129,26 @@ export interface InstallmentPayment {
 export interface Payment {
   id: number;
   order: number;
-  stripe_payment_intent: string;
+  order_id?: number;
   amount: string;
-  status: "pending" | "succeeded" | "failed";
+  installment_payment?: number | null;
+  status: "pending" | "succeeded" | "failed" | "refunded" | "canceled";
   created_at: string;
+  updated_at?: string;
+}
+
+export interface Card {
+  id: number;
+  user?: string;
+  card_number?: string;
+  masked_number?: string;
+  expiration_date: string;
+  created_at: string;
+}
+
+export interface Balance {
+  balance: string;
+  currency?: string;
 }
 
 export interface Seller {

@@ -65,9 +65,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return OrderDetailSerializer
         return OrderListSerializer
 
-    # ✅ create ni override qilmaymiz.
-    # DRF avtomatik: serializer.is_valid(); serializer.save(); return Response(...)
-    # OrderCreateSerializer.create() ichida service ishlashi kerak.
+
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def cancel(self, request, pk=None):

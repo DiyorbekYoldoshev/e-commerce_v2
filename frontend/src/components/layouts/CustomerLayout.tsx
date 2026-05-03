@@ -86,6 +86,9 @@ const CustomerLayout: React.FC = () => {
                     <DropdownMenuItem onClick={() => navigate("/payments")}>
                       <CreditCard className="h-4 w-4 mr-2" /> To'lovlarim
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/cards")}>
+                      <CreditCard className="h-4 w-4 mr-2" /> Kartalarim
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/wishlist")}>
                       <Heart className="h-4 w-4 mr-2" /> Sevimlilar
                     </DropdownMenuItem>

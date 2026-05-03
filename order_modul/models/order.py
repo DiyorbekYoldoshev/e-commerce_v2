@@ -92,6 +92,7 @@ class Order(BaseModel):
     #     related_name='Orders'
     # )
     is_installment = models.BooleanField(default=False)
+    is_cash = models.BooleanField(default=True)
 
     objects = OrderManager()
     all_objects = Manager()

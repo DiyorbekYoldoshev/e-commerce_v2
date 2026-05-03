@@ -1,164 +1,210 @@
-import stripe
-from decimal import Decimal, ROUND_HALF_UP
-from django.conf import settings
-from django.shortcuts import get_object_or_404
+from decimal import Decimal
+
 from django.db import transaction
-
-from rest_framework.generics import ListAPIView
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.views import APIView
 
-from billing.models import Payment
-from billing.serializers import PaymentSerializer
-from order_modul.models import Order, InstallmentPayment
+from order_modul.models import InstallmentPayment, Order
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
-
-def _convert_to_stripe_amount(amount_uzs):
-    """UZS summani Stripe uchun cents (USD) ga aylantiradi."""
-    requested_currency = "uzs"
-    stripe_currency = getattr(settings, "STRIPE_CURRENCY", "usd").lower()
-
-    if stripe_currency == "uzs":
-        # Stripe to'g'ridan-to'g'ri UZS (so'mda)
-        return int(Decimal(amount_uzs) * Decimal(100)), stripe_currency
-
-    rate = getattr(settings, "STRIPE_UZS_TO_USD_RATE", None)
-    if not rate:
-        # Default: 1 USD = 12500 UZS
-        rate_uzs_per_usd = Decimal("12500")
-    else:
-        rate_uzs_per_usd = Decimal(str(rate))
-
-    usd = (Decimal(amount_uzs) / rate_uzs_per_usd).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
-    cents = int((usd * Decimal(100)).to_integral_value(rounding=ROUND_HALF_UP))
-    return cents, stripe_currency
+from .models import Card, Payment, Wallet
+from .serializers import (
+    CardSerializer,
+    PaymentSerializer,
+    ProcessPaymentSerializer,
+    TopUpSerializer,
+    WalletSerializer,
+)
 
 
-class CreatePaymentIntent(APIView):
+# --------- Yordamchi ---------
+def get_or_create_wallet(user) -> Wallet:
+    wallet, _ = Wallet.objects.get_or_create(user=user)
+    return wallet
 
+
+# --------- KARTA ---------
+class CardListCreateView(generics.ListCreateAPIView):
+    serializer_class = CardSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Card.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class CardDeleteView(generics.DestroyAPIView):
+    serializer_class = CardSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Card.objects.filter(user=self.request.user)
+
+
+# --------- BALANS ---------
+class BalanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        wallet = get_or_create_wallet(request.user)
+        return Response(WalletSerializer(wallet).data)
+
+
+class TopUpBalanceView(APIView):
+    """Karta orqali wallet'ni to'ldirish (simulyatsiya)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        order_id = request.data.get("order_id")
-        installment_id = request.data.get("installment_id")
+        ser = TopUpSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        amount = Decimal(str(ser.validated_data["amount"]))
+        card = get_object_or_404(
+            Card, id=ser.validated_data["card_id"], user=request.user
+        )
 
-        if not order_id:
-            return Response({"error": "order_id majburiy"}, status=status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            wallet = Wallet.objects.select_for_update().get_or_create(
+                user=request.user
+            )[0]
+            wallet.balance = (wallet.balance or Decimal("0")) + amount
+            wallet.save()
 
-        order = get_object_or_404(Order, id=order_id)
+        return Response({
+            "status": "success",
+            "message": f"{amount} so'm balansga qo'shildi",
+            "balance": str(wallet.balance),
+            "card": card.masked_number,
+        })
 
-        if order.user != request.user:
-            return Response({"error": "Bu buyurtma sizga tegishli emas"}, status=status.HTTP_403_FORBIDDEN)
 
-        is_installment_order = hasattr(order, "installment_plan") and order.installment_plan is not None
-        payment_method = getattr(order, "payment_method", None)
-        if not installment_id:
-            if payment_method == "cash":
-                return Response(
-                    {"error": "Bu buyurtma naqd to'lov uchun. Online to'lov mumkin emas."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if is_installment_order:
-                return Response(
-                    {"error": "Bo'lib to'lash buyurtmasi. Har oy alohida to'lang."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if order.payment_status == "paid":
-                return Response({"error": "Bu buyurtma allaqachon to'langan"}, status=status.HTTP_400_BAD_REQUEST)
+# --------- TO'LOV ---------
+class ProcessPaymentView(APIView):
+    """
+    Buyurtma yoki nasiya oyligi uchun to'lov.
+    Mantiq:
+      - Naqd buyurtmaga online to'lov mumkin emas (xatolik).
+      - Nasiya bo'lsa, faqat ma'lum oylik (installment_id) to'lanadi.
+      - Naqd-bo'lmagan to'liq to'lovlar uchun 1 marta to'lash mumkin.
+      - Karta yoki Wallet balansidan yechiladi.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        ser = ProcessPaymentSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+
+        order = get_object_or_404(Order, id=data["order_id"], user=request.user)
+        card = get_object_or_404(Card, id=data["card_id"], user=request.user)
+        installment_id = data.get("installment_id")
 
         installment = None
         if installment_id:
             installment = get_object_or_404(
-                InstallmentPayment, id=installment_id, installment__order=order
+                InstallmentPayment,
+                id=installment_id,
+                installment__order=order,
             )
             if installment.is_paid:
                 return Response(
-                    {"error": "Bu oylik to'lov allaqachon amalga oshirilgan"},
+                    {"error": "Bu oylik to'lov allaqachon to'langan"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # To'liq to'lov — agar nasiya rejasi mavjud bo'lsa, uni rad qilamiz
+            if hasattr(order, "installment_plan") and order.installment_plan:
+                return Response(
+                    {"error": "Bu nasiya buyurtma — har oylikni alohida to'lang"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Naqd buyurtmaga online to'lov yo'q
+            if getattr(order, "is_cash", False):
+                return Response(
+                    {"error": "Naqd buyurtma uchun online to'lov mavjud emas"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if order.payment_status == "paid":
+                return Response(
+                    {"error": "Buyurtma to'liq to'langan"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        existing_qs = Payment.objects.filter(order=order, status="pending")
-        if installment:
-            existing_qs = existing_qs.filter(installment_payment=installment)
-        else:
-            existing_qs = existing_qs.filter(installment_payment__isnull=True)
-
-        succeeded_qs = Payment.objects.filter(order=order, status="succeeded")
-        if installment:
-            succeeded_qs = succeeded_qs.filter(installment_payment=installment)
-        else:
-            succeeded_qs = succeeded_qs.filter(installment_payment__isnull=True)
-        if succeeded_qs.exists():
-            return Response({"error": "To'lov allaqachon amalga oshirilgan"}, status=status.HTTP_400_BAD_REQUEST)
-
-        amount_uzs = installment.amount if installment else order.payable_amount
-
-        existing_pending = existing_qs.first()
-        if existing_pending:
-            try:
-                intent = stripe.PaymentIntent.retrieve(existing_pending.stripe_payment_intent)
-                if intent.status in ("requires_payment_method", "requires_confirmation", "requires_action", "processing"):
-                    return Response({
-                        "client_secret": intent.client_secret,
-                        "payment_intent_id": intent.id,
-                        "amount": str(amount_uzs),
-                        "reused": True,
-                    })
-                existing_pending.status = "canceled"
-                existing_pending.save(update_fields=["status"])
-            except stripe.error.StripeError:
-                existing_pending.status = "canceled"
-                existing_pending.save(update_fields=["status"])
-
-        stripe_amount_cents, stripe_currency = _convert_to_stripe_amount(amount_uzs)
-
-        metadata = {"order_id": str(order.id)}
-        if installment_id:
-            metadata["installment_id"] = str(installment_id)
+        amount = Decimal(str(installment.amount if installment else order.payable_amount))
 
         try:
-            intent = stripe.PaymentIntent.create(
-                amount=stripe_amount_cents,
-                currency=stripe_currency,
-                metadata=metadata,
-                description=f"Order #{order.id}" + (
-                    f" - Installment #{installment_id}" if installment_id else ""
-                ),
-                automatic_payment_methods={"enabled": True},
-            )
             with transaction.atomic():
-                Payment.objects.create(
+                # 1) Mablag'ni tekshirish va yechish (avval karta, keyin wallet)
+                source = None
+                card_locked = Card.objects.select_for_update().get(pk=card.id)
+                if card_locked.balance >= amount:
+                    card_locked.balance -= amount
+                    card_locked.save()
+                    source = "card"
+                else:
+                    wallet = Wallet.objects.select_for_update().get_or_create(
+                        user=request.user
+                    )[0]
+                    if wallet.balance < amount:
+                        return Response(
+                            {"error": "Mablag' yetarli emas. Kartani yoki balansni to'ldiring."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    wallet.balance -= amount
+                    wallet.save()
+                    source = "wallet"
+
+                # 2) Payment yozuvi
+                payment = Payment.objects.create(
                     order=order,
-                    stripe_payment_intent=intent.id,
-                    amount=amount_uzs,
-                    currency="uzs",
-                    stripe_currency=stripe_currency,
-                    stripe_amount_cents=stripe_amount_cents,
-                    status="pending",
+                    card=card_locked,
+                    amount=amount,
+                    status="succeeded",
                     installment_payment=installment,
                 )
-        except stripe.error.StripeError as e:
-            return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
-        return Response({
-            "client_secret": intent.client_secret,
-            "payment_intent_id": intent.id,
-            "amount": str(amount_uzs),
-            "reused": False,
-        })
+                # 3) Statuslarni yangilash
+                if installment:
+                    installment.is_paid = True
+                    if hasattr(installment, "paid_at"):
+                        from django.utils import timezone
+                        installment.paid_at = timezone.now()
+                    installment.save()
+
+                    plan = installment.installment
+                    if not plan.payments.filter(is_paid=False).exists():
+                        order.payment_status = "paid"
+                        order.save()
+                    else:
+                        order.payment_status = "partial"
+                        order.save()
+                else:
+                    order.payment_status = "paid"
+                    order.save()
+
+            return Response({
+                "status": "success",
+                "message": "To'lov muvaffaqiyatli bajarildi",
+                "payment_id": payment.id,
+                "source": source,
+                "amount": str(amount),
+            })
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-class PaymentListView(ListAPIView):
+# --------- TARIX ---------
+class PaymentHistoryView(generics.ListAPIView):
     serializer_class = PaymentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Payment.objects.filter(
             order__user=self.request.user
-        ).select_related("order", "installment_payment").order_by("-created_at")
+        ).order_by("-created_at")

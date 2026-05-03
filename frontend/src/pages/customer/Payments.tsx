@@ -1,33 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { billingApi } from "@/lib/api";
+import { billingApi, orderApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import type { Payment } from "@/types";
-import { Card, CardContent } from "@/components/ui/card";
+import type { Payment, Order } from "@/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  CreditCard, CheckCircle2, XCircle, Clock,
-  Banknote, TrendingUp,
-} from "lucide-react";
+import { CreditCard, CheckCircle2, XCircle, Clock, Banknote, TrendingUp, CalendarClock } from "lucide-react";
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
-  succeeded: { label: "Muvaffaqiyatli", color: "bg-green-100 text-green-700 border-green-200",  icon: CheckCircle2 },
-  pending:   { label: "Kutilmoqda",     color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Clock },
-  failed:    { label: "Muvaffaqiyatsiz",color: "bg-red-100 text-red-700 border-red-200",         icon: XCircle },
-  canceled:  { label: "Bekor qilindi",  color: "bg-gray-100 text-gray-600 border-gray-200",      icon: XCircle },
+const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+  succeeded: { label: "Muvaffaqiyatli", color: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle2 },
+  pending: { label: "Kutilmoqda", color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Clock },
+  failed: { label: "Muvaffaqiyatsiz", color: "bg-red-100 text-red-700 border-red-200", icon: XCircle },
 };
 
 const Payments: React.FC = () => {
   const { user } = useAuth();
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [tab, setTab]           = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("all");
 
   useEffect(() => {
     if (!user) { navigate("/login"); return; }
@@ -38,23 +32,19 @@ const Payments: React.FC = () => {
     setLoading(true);
     try {
       const res = await billingApi.list();
-      setPayments(res.data?.results ?? res.data ?? []);
-    } catch {
-      setPayments([]);
-    }
+      setPayments(res.data?.results || res.data || []);
+    } catch {}
     setLoading(false);
   };
 
-  const filtered = tab === "all"
-    ? payments
-    : payments.filter(p => p.status === tab);
+  const filtered = tab === "all" ? payments : payments.filter(p => p.status === tab);
 
   const totalPaid = payments
     .filter(p => p.status === "succeeded")
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
-  const successCount = payments.filter(p => p.status === "succeeded").length;
   const pendingCount = payments.filter(p => p.status === "pending").length;
+  const successCount = payments.filter(p => p.status === "succeeded").length;
 
   return (
     <div>
@@ -62,22 +52,22 @@ const Payments: React.FC = () => {
         <CreditCard className="h-5 w-5 md:h-6 md:w-6 text-primary" /> To'lovlarim
       </h1>
 
-      {/* Summary */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
-            <div className="min-w-0">
+            <div>
               <p className="text-xs text-muted-foreground">Jami to'langan</p>
-              <p className="text-lg font-bold truncate">{totalPaid.toLocaleString()} so'm</p>
+              <p className="text-lg font-bold">{totalPaid.toLocaleString()} so'm</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <CheckCircle2 className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -88,7 +78,7 @@ const Payments: React.FC = () => {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
               <Clock className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
@@ -99,17 +89,17 @@ const Payments: React.FC = () => {
         </Card>
       </div>
 
-      {/* Tabs */}
+      {/* Filter Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="mb-4">
         <TabsList>
           <TabsTrigger value="all">Barchasi ({payments.length})</TabsTrigger>
-          <TabsTrigger value="succeeded">Muvaffaqiyatli ({successCount})</TabsTrigger>
-          <TabsTrigger value="pending">Kutilmoqda ({pendingCount})</TabsTrigger>
+          <TabsTrigger value="succeeded">Muvaffaqiyatli</TabsTrigger>
+          <TabsTrigger value="pending">Kutilmoqda</TabsTrigger>
           <TabsTrigger value="failed">Muvaffaqiyatsiz</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Table */}
+      {/* Payments Table */}
       {loading ? (
         <div className="text-center py-16 text-muted-foreground">Yuklanmoqda...</div>
       ) : filtered.length === 0 ? (
@@ -127,16 +117,17 @@ const Payments: React.FC = () => {
                 <TableHead className="whitespace-nowrap">Summa</TableHead>
                 <TableHead className="whitespace-nowrap">Holat</TableHead>
                 <TableHead className="whitespace-nowrap hidden sm:table-cell">Sana</TableHead>
-                <TableHead className="whitespace-nowrap hidden md:table-cell">Stripe ID</TableHead>
+                <TableHead className="whitespace-nowrap hidden md:table-cell">Tur</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map(p => {
-                const cfg = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.pending;
+                const cfg = statusConfig[p.status] || statusConfig.pending;
                 const Icon = cfg.icon;
+                const orderId = p.order ?? p.order_id;
                 return (
                   <TableRow key={p.id}>
-                    <TableCell className="font-mono text-xs text-muted-foreground">#{p.id}</TableCell>
+                    <TableCell className="font-mono text-xs">#{p.id}</TableCell>
                     <TableCell>
                       <Button
                         variant="link"
@@ -144,11 +135,10 @@ const Payments: React.FC = () => {
                         className="p-0 h-auto text-xs"
                         onClick={() => navigate("/my-orders")}
                       >
-                        #{p.order_id ?? p.order}
+                        Buyurtma #{orderId}
                       </Button>
                     </TableCell>
-                    <TableCell className="font-mono font-semibold text-sm whitespace-nowrap">
-                      {/* amount USD → so'm (1 USD ≈ 12800 so'm) yoki backend so'm qaytarsa to'g'ridan */}
+                    <TableCell className="font-mono font-semibold text-sm">
                       {Number(p.amount).toLocaleString()} so'm
                     </TableCell>
                     <TableCell>
@@ -157,11 +147,11 @@ const Payments: React.FC = () => {
                         {cfg.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground hidden sm:table-cell whitespace-nowrap">
+                    <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">
                       {new Date(p.created_at).toLocaleDateString("uz")}
                     </TableCell>
-                    <TableCell className="font-mono text-[10px] text-muted-foreground hidden md:table-cell max-w-[140px] truncate">
-                      {p.stripe_payment_intent}
+                    <TableCell className="text-xs text-muted-foreground hidden md:table-cell">
+                      {p.installment_payment ? "Nasiya oyligi" : "To'liq to'lov"}
                     </TableCell>
                   </TableRow>
                 );
