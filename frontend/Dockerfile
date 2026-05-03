@@ -9,11 +9,9 @@ RUN npm install
 # Source
 COPY . .
 
-# Build vaqtida API URL (docker-compose dan keladi)
-ARG VITE_API_BASE=http://localhost:8000/api/v1
-ARG VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-ENV VITE_API_BASE=$VITE_API_BASE
-ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
+# Build vaqtida API URL (docker-compose args dan keladi)
+ARG VITE_API_URL=http://localhost:8000/api/v1
+ENV VITE_API_URL=$VITE_API_URL
 
 # Production build
 RUN npm run build

@@ -21,15 +21,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE: http://${SERVER_IP:-localhost}:8000/api/v1
-        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
+
+        VITE_API_URL: http://${SERVER_IP:-localhost}:8000/api/v1
     container_name: react_frontend
     restart: always
     ports:
       - "8080:8080"
     depends_on:
       - backend
-
-volumes:
-  # keep named volumes only if needed; using bind mounts for db and media in compose above
-  # media_files:
