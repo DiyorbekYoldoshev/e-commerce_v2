@@ -29,7 +29,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = ["10.186.131.41", "127.0.0.1","localhost"]
+ALLOWED_HOSTS = ["10.186.131.41", "127.0.0.1","0.0.0.0","localhost","*"]
 
 # Application definition
 
