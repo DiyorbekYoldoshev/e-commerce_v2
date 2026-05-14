@@ -187,6 +187,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://10.186.131.41:8080",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
+    "https://softdev.com.uz",
+    "https://www.softdev.com.uz"
 ]
 CORS_ALLOW_METHODS = [
     "GET",
