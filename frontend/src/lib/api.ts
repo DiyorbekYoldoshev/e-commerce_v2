@@ -1,10 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
-/**
- * API base URL.
- * `.env` faylida `VITE_API_URL` ni o'zgartirish mumkin, masalan:
- *   VITE_API_URL=http://10.186.131.41:8000/api/v1
- */
+
 const API_BASE =
   (import.meta.env.VITE_API_URL as string | undefined) ||
   "http://localhost:8000/api/v1";

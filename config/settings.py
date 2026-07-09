@@ -29,8 +29,11 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 CORS_ALLOW_ALL_ORIGINS = True
 
-ALLOWED_HOSTS = ["10.186.131.41", "127.0.0.1","0.0.0.0","localhost","*"]
-
+ALLOWED_HOSTS = [
+    "localhost", "127.0.0.1", "0.0.0.0", "*",
+    "e-commercev2-production.up.railway.app",
+]
+# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 # Application definition
 
 INSTALLED_APPS = [
@@ -184,11 +187,9 @@ SWAGGER_SETTINGS = {
     "SECURITY_REQUIREMENTS":[{"Bearer":[]}]
 }
 CORS_ALLOWED_ORIGINS = [
-    "http://10.186.131.41:8080",
+    "https://responsible-strength-production-3cdd.up.railway.app",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
-    "https://softdev.com.uz",
-    "https://www.softdev.com.uz"
 ]
 CORS_ALLOW_METHODS = [
     "GET",
